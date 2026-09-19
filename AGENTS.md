@@ -18,6 +18,19 @@ This repository provides a Go client for Ceph's RGW management endpoints exposed
 - Return decoded domain models and errors from endpoint methods. Keep HTTP status, headers, and raw successful response bodies internal unless an endpoint exposes meaningful transport metadata that callers need.
 - Return single resources by value as `(Resource, error)`, collections as `([]Resource, error)`, and actions without a meaningful result as `error`. Use pointers within models only for nullable fields or when absence must be distinguishable from a zero value.
 - Preserve Ceph's actual HTTP method, route, media type, parameter location, parameter names, and response status.
-- Add request-level tests with `httptest` for every endpoint.
+- Test shared transport behavior such as authentication and media-type headers,
+  response-size limits, HTTP error mapping, and client validation once in the
+  client unit tests. Do not add endpoint-specific `httptest` coverage by
+  default: Ceph itself is the authoritative check for routes, parameters,
+  statuses, and response shapes. Add a focused unit test only for substantial
+  client-side logic that the integration suite cannot exercise clearly.
+- Add each endpoint to the real Ceph container integration suite when it can be
+  tested safely and reversed reliably. Prefer a
+  create/get-or-list/update/delete roundtrip with cleanup for mutable
+  resources. Treat this suite as the authoritative runtime contract check.
+- Do not duplicate Ceph's API behavior or test suite with synthetic response
+  fixtures or mocks of Ceph internals.
 - Use the Go standard library unless an external dependency has a clear benefit.
-- Run `gofmt`, `go test ./...`, and `go vet ./...` after changes.
+- Run `gofmt`, `go test -short ./...`, and `go vet ./...` after changes. When
+  the Ceph container is available, also run `go test ./test/ceph/integration`;
+  integration tests use `testing.Short()` as their only skip mechanism.

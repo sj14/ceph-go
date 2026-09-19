@@ -41,12 +41,27 @@ The Dashboard API is available at `http://localhost:8443`; RGW listens at
 and can be overridden through the corresponding environment variables. The
 ephemeral RGW user used by tests is `rgw-go-test`.
 
-Run real User CRUD and Create/Get Bucket round trips after the container is
-healthy:
+Run the real Dashboard contract tests after the container is healthy:
 
 ```sh
-go run ./test/ceph/smoke
+go test -v ./test/ceph/integration
 ```
+
+The tests run by default and expect the container to be available. Use
+`go test -short ./...` to run only the fast client unit tests.
+
+They cover User Create/Get/List/Update/Delete, explicit zero values, optional
+statistics, deletion verification, Bucket Create/Get, and missing-resource
+errors. In particular, they pin Ceph Dashboard `v20.2.4`'s observed behavior
+of wrapping RGW `NoSuchUser` and `NoSuchBucket` responses in HTTP 500 errors.
+
+The small `httptest` suite checks shared Go client behavior such as headers,
+error mapping, response limits, and option validation. Endpoint contracts are
+not duplicated with synthetic responses: the opt-in integration suite checks
+them against real Ceph. Its tests are split by controller family in
+`test/ceph/integration/*_test.go`, with one top-level test per endpoint. Mutable
+resources use unique names and are deleted when the implemented API permits
+it; the whole cluster remains ephemeral.
 
 Stop and remove the ephemeral cluster with:
 

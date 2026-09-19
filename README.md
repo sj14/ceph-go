@@ -177,5 +177,5 @@ The token is the JWT returned by Ceph Dashboard's `POST /api/auth` endpoint. A p
 
 A purpose-built, ephemeral Ceph image with MON, MGR Dashboard, an in-memory
 OSD, and RGW lives in [`test/ceph`](test/ceph/README.md). It is substantially
-smaller than the general-purpose official image and includes a smoke test for
-the Create/Get Bucket flow.
+smaller than the general-purpose official image and includes real integration
+tests for the implemented Dashboard endpoints.
