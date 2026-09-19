@@ -77,8 +77,8 @@ not yet implemented. Controller helpers that are not HTTP endpoints are omitted.
 - [x] `DeleteUser` — `DELETE /api/rgw/user/{uid}`
 - [ ] Add user capability — `POST /api/rgw/user/{uid}/capability`
 - [ ] Delete user capability — `DELETE /api/rgw/user/{uid}/capability`
-- [ ] Create access key — `POST /api/rgw/user/{uid}/key`
-- [ ] Delete access key — `DELETE /api/rgw/user/{uid}/key`
+- [x] `CreateAccessKey` — `POST /api/rgw/user/{uid}/key`
+- [x] `DeleteAccessKey` — `DELETE /api/rgw/user/{uid}/key`
 - [ ] Get user quota — `GET /api/rgw/user/{uid}/quota`
 - [ ] Update user quota — `PUT /api/rgw/user/{uid}/quota`
 - [ ] Create subuser — `POST /api/rgw/user/{uid}/subuser`

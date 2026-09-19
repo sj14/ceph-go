@@ -318,11 +318,112 @@ func (client *Client) DeleteUser(ctx context.Context, input DeleteUserRequest) e
 	return err
 }
 
+// CreateAccessKeyRequest contains the parameters accepted by Ceph's RGW user
+// key controller. UID is required. Ceph defaults GenerateKey to true when it
+// is omitted.
+//
+// Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
+//   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwUser.create_key)
+//   - src/pybind/mgr/dashboard/frontend/src/app/shared/api/rgw-user.service.ts
+//   - src/pybind/mgr/dashboard/services/rgw_client.py (RgwClient.proxy)
+type CreateAccessKeyRequest struct {
+	UID string
+
+	Subuser     *string
+	GenerateKey *bool
+	AccessKey   *string
+	SecretKey   *string
+	DaemonName  string
+}
+
+// CreateAccessKey creates a credential through
+// POST /api/rgw/user/{uid}/key. Ceph returns all S3 access keys belonging to
+// the user after creation.
+func (client *Client) CreateAccessKey(ctx context.Context, input CreateAccessKeyRequest) ([]UserAccessKey, error) {
+	if ctx == nil {
+		return nil, errors.New("rgw: context must not be nil")
+	}
+	if strings.TrimSpace(input.UID) == "" {
+		return nil, errors.New("rgw: user UID must not be empty")
+	}
+
+	endpoint := client.userResourceEndpoint(input.UID, "key")
+	query := url.Values{"key_type": {"s3"}}
+	setOptionalString(query, "subuser", input.Subuser)
+	setOptionalBool(query, "generate_key", input.GenerateKey)
+	setOptionalString(query, "access_key", input.AccessKey)
+	setOptionalString(query, "secret_key", input.SecretKey)
+	setOptional(query, "daemon_name", input.DaemonName)
+	endpoint.RawQuery = query.Encode()
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	body, err := client.do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	var keys []UserAccessKey
+	if err := json.Unmarshal(body, &keys); err != nil {
+		return nil, fmt.Errorf("rgw: decode POST %s response: %w", request.URL.Path, err)
+	}
+	return keys, nil
+}
+
+// DeleteAccessKeyRequest identifies an S3 credential to remove from an RGW
+// user. UID and AccessKey are required.
+type DeleteAccessKeyRequest struct {
+	UID       string
+	AccessKey string
+
+	Subuser    *string
+	DaemonName string
+}
+
+// DeleteAccessKey deletes a credential through
+// DELETE /api/rgw/user/{uid}/key.
+func (client *Client) DeleteAccessKey(ctx context.Context, input DeleteAccessKeyRequest) error {
+	if ctx == nil {
+		return errors.New("rgw: context must not be nil")
+	}
+	if strings.TrimSpace(input.UID) == "" {
+		return errors.New("rgw: user UID must not be empty")
+	}
+	if strings.TrimSpace(input.AccessKey) == "" {
+		return errors.New("rgw: access key must not be empty")
+	}
+
+	endpoint := client.userResourceEndpoint(input.UID, "key")
+	query := url.Values{
+		"key_type":   {"s3"},
+		"access_key": {input.AccessKey},
+	}
+	setOptionalString(query, "subuser", input.Subuser)
+	setOptional(query, "daemon_name", input.DaemonName)
+	endpoint.RawQuery = query.Encode()
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint.String(), nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.do(request)
+	return err
+}
+
 func (client *Client) userEndpoint(uid string) *url.URL {
 	endpoint := client.endpoint("api/rgw/user")
 	baseEscapedPath := strings.TrimRight(endpoint.EscapedPath(), "/")
 	endpoint.Path = strings.TrimRight(endpoint.Path, "/") + "/" + uid
 	endpoint.RawPath = baseEscapedPath + "/" + url.PathEscape(uid)
+	return endpoint
+}
+
+func (client *Client) userResourceEndpoint(uid, resource string) *url.URL {
+	endpoint := client.userEndpoint(uid)
+	endpoint.Path = strings.TrimRight(endpoint.Path, "/") + "/" + resource
+	endpoint.RawPath = strings.TrimRight(endpoint.RawPath, "/") + "/" + url.PathEscape(resource)
 	return endpoint
 }
 

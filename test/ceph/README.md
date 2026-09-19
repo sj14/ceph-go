@@ -50,10 +50,11 @@ go test -v ./test/ceph/integration
 The tests run by default and expect the container to be available. Use
 `go test -short ./...` to run only the fast client unit tests.
 
-They cover User Create/Get/List/Update/Delete, explicit zero values, optional
-statistics, deletion verification, Bucket Create/Get, and missing-resource
-errors. In particular, they pin Ceph Dashboard `v20.2.4`'s observed behavior
-of wrapping RGW `NoSuchUser` and `NoSuchBucket` responses in HTTP 500 errors.
+They cover User Create/Get/List/Update/Delete, S3 access-key Create/Delete,
+explicit zero values, optional statistics, deletion verification, Bucket
+Create/Get, and missing-resource errors. In particular, they pin Ceph
+Dashboard `v20.2.4`'s observed behavior of wrapping RGW `NoSuchUser` and
+`NoSuchBucket` responses in HTTP 500 errors.
 
 The small `httptest` suite checks shared Go client behavior such as headers,
 error mapping, response limits, and option validation. Endpoint contracts are
