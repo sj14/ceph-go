@@ -26,6 +26,13 @@ type GetBucketRequest struct {
 	DaemonName string
 }
 
+// DeleteBucketRequest identifies an empty bucket to delete and, optionally,
+// the RGW daemon through which Ceph Dashboard should delete it.
+type DeleteBucketRequest struct {
+	Name       string
+	DaemonName string
+}
+
 // Bucket is the bucket representation assembled by Ceph Dashboard. Fields
 // whose shape is controlled by RGW configuration are retained as raw JSON.
 //
@@ -116,10 +123,7 @@ func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (Bu
 		return Bucket{}, errors.New("rgw: bucket name must not be empty")
 	}
 
-	endpoint := client.endpoint("api/rgw/bucket")
-	baseEscapedPath := strings.TrimRight(endpoint.EscapedPath(), "/")
-	endpoint.Path = strings.TrimRight(endpoint.Path, "/") + "/" + input.Name
-	endpoint.RawPath = baseEscapedPath + "/" + url.PathEscape(input.Name)
+	endpoint := client.bucketEndpoint(input.Name)
 	query := url.Values{}
 	setOptional(query, "daemon_name", input.DaemonName)
 	endpoint.RawQuery = query.Encode()
@@ -138,6 +142,35 @@ func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (Bu
 		return Bucket{}, fmt.Errorf("rgw: decode GET %s response: %w", request.URL.Path, err)
 	}
 	return bucket, nil
+}
+
+// DeleteBucket deletes an empty bucket through
+// DELETE /api/rgw/bucket/{bucket}.
+//
+// Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
+//   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwBucket.delete)
+//   - src/pybind/mgr/dashboard/controllers/_rest_controller.py
+//   - src/pybind/mgr/dashboard/frontend/src/app/shared/api/rgw-bucket.service.ts
+//   - src/pybind/mgr/dashboard/services/rgw_client.py (RgwClient.proxy)
+func (client *Client) DeleteBucket(ctx context.Context, input DeleteBucketRequest) error {
+	if ctx == nil {
+		return errors.New("rgw: context must not be nil")
+	}
+	if strings.TrimSpace(input.Name) == "" {
+		return errors.New("rgw: bucket name must not be empty")
+	}
+
+	endpoint := client.bucketEndpoint(input.Name)
+	query := url.Values{}
+	setOptional(query, "daemon_name", input.DaemonName)
+	endpoint.RawQuery = query.Encode()
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint.String(), nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.do(request)
+	return err
 }
 
 // CreateBucketRequest contains the arguments accepted by Ceph's RGW bucket
@@ -209,6 +242,14 @@ func (client *Client) CreateBucket(ctx context.Context, input CreateBucketReques
 	}
 	_, err = client.do(request)
 	return err
+}
+
+func (client *Client) bucketEndpoint(name string) *url.URL {
+	endpoint := client.endpoint("api/rgw/bucket")
+	baseEscapedPath := strings.TrimRight(endpoint.EscapedPath(), "/")
+	endpoint.Path = strings.TrimRight(endpoint.Path, "/") + "/" + name
+	endpoint.RawPath = baseEscapedPath + "/" + url.PathEscape(name)
+	return endpoint
 }
 
 func setOptional(values url.Values, name, value string) {

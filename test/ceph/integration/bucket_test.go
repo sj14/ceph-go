@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -12,47 +11,90 @@ import (
 	rgw "github.com/sj14/rgw-go"
 )
 
-func createBucketFixture(t *testing.T, client *rgw.Client, ctx context.Context) string {
+type bucketFixture struct {
+	client  *rgw.Client
+	name    string
+	deleted bool
+}
+
+func createBucketFixture(t *testing.T, client *rgw.Client, ctx context.Context) *bucketFixture {
 	t.Helper()
-	name := fmt.Sprintf("rgw-go-integration-bucket-%d", time.Now().UnixNano())
-	if err := client.CreateBucket(ctx, rgw.CreateBucketRequest{Name: name, UID: "rgw-go-test"}); err != nil {
+	fixture := &bucketFixture{
+		client: client,
+		name:   uniqueResourceName(t, "rgw-go-integration-bucket"),
+	}
+	if err := client.CreateBucket(ctx, rgw.CreateBucketRequest{Name: fixture.name, UID: "rgw-go-test"}); err != nil {
 		t.Fatal(err)
 	}
-	return name
+	t.Cleanup(func() {
+		if fixture.deleted {
+			return
+		}
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cleanupCancel()
+		if err := fixture.client.DeleteBucket(cleanupCtx, rgw.DeleteBucketRequest{Name: fixture.name}); err != nil {
+			t.Errorf("cleanup bucket %q: %v", fixture.name, err)
+		}
+	})
+	return fixture
 }
 
 func TestCreateBucket(t *testing.T) {
+	t.Parallel()
+
 	client := integrationClient(t)
 	ctx := integrationContext(t)
-	name := createBucketFixture(t, client, ctx)
+	fixture := createBucketFixture(t, client, ctx)
 
-	bucket, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: name})
+	bucket, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bucket.Name != name || bucket.Owner != "rgw-go-test" {
+	if bucket.Name != fixture.name || bucket.Owner != "rgw-go-test" {
 		t.Fatalf("bucket = %#v", bucket)
 	}
 }
 
 func TestGetBucket(t *testing.T) {
+	t.Parallel()
+
 	client := integrationClient(t)
 	ctx := integrationContext(t)
-	name := createBucketFixture(t, client, ctx)
+	fixture := createBucketFixture(t, client, ctx)
 
-	bucket, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: name})
+	bucket, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bucket.Name != name || bucket.Owner != "rgw-go-test" || bucket.ID == "" || bucket.CreationTime == "" {
+	if bucket.Name != fixture.name || bucket.Owner != "rgw-go-test" || bucket.ID == "" || bucket.CreationTime == "" {
 		t.Fatalf("bucket = %#v", bucket)
 	}
 
-	missing := fmt.Sprintf("rgw-go-missing-bucket-%d", time.Now().UnixNano())
+	missing := uniqueResourceName(t, "rgw-go-missing-bucket")
 	_, err = client.GetBucket(ctx, rgw.GetBucketRequest{Name: missing})
 	var apiError *rgw.APIError
 	if !errors.As(err, &apiError) || apiError.StatusCode != http.StatusInternalServerError ||
 		!strings.Contains(apiError.Body, "NoSuchBucket") {
 		t.Fatalf("GetBucket for missing bucket error = %v, want Dashboard HTTP 500 containing NoSuchBucket", err)
+	}
+}
+
+func TestDeleteBucket(t *testing.T) {
+	t.Parallel()
+
+	client := integrationClient(t)
+	ctx := integrationContext(t)
+	fixture := createBucketFixture(t, client, ctx)
+
+	if err := client.DeleteBucket(ctx, rgw.DeleteBucketRequest{Name: fixture.name}); err != nil {
+		t.Fatal(err)
+	}
+	fixture.deleted = true
+
+	_, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
+	var apiError *rgw.APIError
+	if !errors.As(err, &apiError) || apiError.StatusCode != http.StatusInternalServerError ||
+		!strings.Contains(apiError.Body, "NoSuchBucket") {
+		t.Fatalf("GetBucket after delete error = %v, want Dashboard HTTP 500 containing NoSuchBucket", err)
 	}
 }

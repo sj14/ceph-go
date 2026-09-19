@@ -52,7 +52,10 @@ The tests run by default and expect the container to be available. Use
 
 They cover User Create/Get/List/Update/Delete, S3 access-key Create/Delete,
 explicit zero values, optional statistics, deletion verification, Bucket
-Create/Get, and missing-resource errors. In particular, they pin Ceph
+Create/Get/Delete, and missing-resource errors. Independent endpoint tests run
+in parallel and clean up their mutable fixtures. `ListUsers` stays serial because
+Ceph resolves list entries non-atomically and can otherwise race with user
+deletion. In particular, the tests pin Ceph
 Dashboard `v20.2.4`'s observed behavior of wrapping RGW `NoSuchUser` and
 `NoSuchBucket` responses in HTTP 500 errors.
 
@@ -61,8 +64,8 @@ error mapping, response limits, and option validation. Endpoint contracts are
 not duplicated with synthetic responses: the opt-in integration suite checks
 them against real Ceph. Its tests are split by controller family in
 `test/ceph/integration/*_test.go`, with one top-level test per endpoint. Mutable
-resources use unique names and are deleted when the implemented API permits
-it; the whole cluster remains ephemeral.
+resources use cryptographically random name suffixes and are deleted during
+test cleanup; the whole cluster remains ephemeral.
 
 Stop and remove the ephemeral cluster with:
 

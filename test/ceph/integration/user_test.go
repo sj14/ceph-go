@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -15,6 +14,7 @@ import (
 type userFixture struct {
 	client  *rgw.Client
 	uid     string
+	email   string
 	deleted bool
 }
 
@@ -23,12 +23,13 @@ func createUserFixture(t *testing.T, client *rgw.Client, ctx context.Context) (*
 
 	fixture := &userFixture{
 		client: client,
-		uid:    fmt.Sprintf("rgw-go-integration-user-%d", time.Now().UnixNano()),
+		uid:    uniqueResourceName(t, "rgw-go-integration-user"),
 	}
+	fixture.email = fixture.uid + "@example.invalid"
 	user, err := client.CreateUser(ctx, rgw.CreateUserRequest{
 		UID:         fixture.uid,
 		DisplayName: "Integration User",
-		Email:       new("created@example.invalid"),
+		Email:       &fixture.email,
 		MaxBuckets:  new(int64(1234)),
 		System:      new(false),
 		Suspended:   new(false),
@@ -51,11 +52,13 @@ func createUserFixture(t *testing.T, client *rgw.Client, ctx context.Context) (*
 }
 
 func TestCreateUser(t *testing.T) {
+	t.Parallel()
+
 	client := integrationClient(t)
 	fixture, user := createUserFixture(t, client, integrationContext(t))
 
 	if user.UID != fixture.uid || user.DisplayName != "Integration User" ||
-		user.Email != "created@example.invalid" || user.MaxBuckets != 1234 {
+		user.Email != fixture.email || user.MaxBuckets != 1234 {
 		t.Fatalf("created user = %#v", user)
 	}
 	if len(user.Keys) != 0 {
@@ -64,6 +67,8 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
+	t.Parallel()
+
 	client := integrationClient(t)
 	ctx := integrationContext(t)
 	fixture, _ := createUserFixture(t, client, ctx)
@@ -86,6 +91,10 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestListUsers(t *testing.T) {
+	// Keep this test serial: with detailed=true, Ceph first lists all UIDs and
+	// then fetches each user's details separately. If a parallel test deletes
+	// any listed user between those steps, the entire request fails with
+	// NoSuchUser, even though this test's own user still exists.
 	client := integrationClient(t)
 	ctx := integrationContext(t)
 	fixture, _ := createUserFixture(t, client, ctx)
@@ -106,6 +115,8 @@ func TestListUsers(t *testing.T) {
 }
 
 func TestUpdateUser(t *testing.T) {
+	t.Parallel()
+
 	client := integrationClient(t)
 	ctx := integrationContext(t)
 	fixture, _ := createUserFixture(t, client, ctx)
@@ -128,6 +139,8 @@ func TestUpdateUser(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
+	t.Parallel()
+
 	client := integrationClient(t)
 	ctx := integrationContext(t)
 	fixture, _ := createUserFixture(t, client, ctx)

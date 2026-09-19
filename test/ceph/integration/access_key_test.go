@@ -7,6 +7,8 @@ import (
 )
 
 func TestCreateAccessKey(t *testing.T) {
+	t.Parallel()
+
 	client := integrationClient(t)
 	ctx := integrationContext(t)
 	fixture, _ := createUserFixture(t, client, ctx)
@@ -24,6 +26,8 @@ func TestCreateAccessKey(t *testing.T) {
 }
 
 func TestDeleteAccessKey(t *testing.T) {
+	t.Parallel()
+
 	client := integrationClient(t)
 	ctx := integrationContext(t)
 	fixture, _ := createUserFixture(t, client, ctx)
