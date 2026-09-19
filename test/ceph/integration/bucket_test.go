@@ -55,6 +55,28 @@ func TestCreateBucket(t *testing.T) {
 	}
 }
 
+func TestListBuckets(t *testing.T) {
+	t.Parallel()
+
+	client := integrationClient(t)
+	ctx := integrationContext(t)
+	fixture := createBucketFixture(t, client, ctx)
+
+	buckets, err := client.ListBuckets(ctx, rgw.ListBucketsRequest{UID: "rgw-go-test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, bucket := range buckets {
+		if bucket.Name == fixture.name {
+			if bucket.Owner != "rgw-go-test" || bucket.ID == "" {
+				t.Fatalf("listed bucket = %#v", bucket)
+			}
+			return
+		}
+	}
+	t.Fatalf("created bucket %q is missing from ListBuckets", fixture.name)
+}
+
 func TestGetBucket(t *testing.T) {
 	t.Parallel()
 
@@ -76,6 +98,36 @@ func TestGetBucket(t *testing.T) {
 	if !errors.As(err, &apiError) || apiError.StatusCode != http.StatusInternalServerError ||
 		!strings.Contains(apiError.Body, "NoSuchBucket") {
 		t.Fatalf("GetBucket for missing bucket error = %v, want Dashboard HTTP 500 containing NoSuchBucket", err)
+	}
+}
+
+func TestUpdateBucket(t *testing.T) {
+	t.Parallel()
+
+	client := integrationClient(t)
+	ctx := integrationContext(t)
+	bucketFixture := createBucketFixture(t, client, ctx)
+
+	bucket, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: bucketFixture.name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.UpdateBucket(ctx, rgw.UpdateBucketRequest{
+		Name:              bucketFixture.name,
+		BucketID:          bucket.ID,
+		UID:               "rgw-go-test",
+		VersioningState:   rgw.BucketVersioningEnabled,
+		EncryptionEnabled: false,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	bucket, err = client.GetBucket(ctx, rgw.GetBucketRequest{Name: bucketFixture.name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bucket.Owner != "rgw-go-test" || bucket.Versioning != string(rgw.BucketVersioningEnabled) {
+		t.Fatalf("updated bucket = %#v", bucket)
 	}
 }
 

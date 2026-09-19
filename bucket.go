@@ -26,12 +26,27 @@ type GetBucketRequest struct {
 	DaemonName string
 }
 
+// ListBucketsRequest filters buckets by owner when UID is set and selects the
+// RGW daemon through which Ceph Dashboard should retrieve them.
+type ListBucketsRequest struct {
+	UID        string
+	DaemonName string
+}
+
 // DeleteBucketRequest identifies an empty bucket to delete and, optionally,
 // the RGW daemon through which Ceph Dashboard should delete it.
 type DeleteBucketRequest struct {
 	Name       string
 	DaemonName string
 }
+
+// BucketVersioningState is an S3 bucket versioning state accepted by Ceph.
+type BucketVersioningState string
+
+const (
+	BucketVersioningEnabled   BucketVersioningState = "Enabled"
+	BucketVersioningSuspended BucketVersioningState = "Suspended"
+)
 
 // Bucket is the bucket representation assembled by Ceph Dashboard. Fields
 // whose shape is controlled by RGW configuration are retained as raw JSON.
@@ -114,6 +129,44 @@ type BucketReplication struct {
 	Policy                     json.RawMessage `json:"policy"`
 }
 
+// ListBuckets retrieves detailed buckets through GET /api/rgw/bucket using
+// Ceph Dashboard API version 1.1. The method sends stats=true so that its
+// return type is consistently []Bucket rather than Ceph's alternate []string
+// response.
+//
+// Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
+//   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwBucket.list)
+//   - src/pybind/mgr/dashboard/controllers/_rest_controller.py
+//   - src/pybind/mgr/dashboard/frontend/src/app/shared/api/rgw-bucket.service.ts
+//   - qa/tasks/mgr/dashboard/test_rgw.py (RgwBucketTest.test_all)
+func (client *Client) ListBuckets(ctx context.Context, input ListBucketsRequest) ([]Bucket, error) {
+	if ctx == nil {
+		return nil, errors.New("rgw: context must not be nil")
+	}
+
+	endpoint := client.endpoint("api/rgw/bucket")
+	query := url.Values{"stats": {"true"}}
+	setOptional(query, "uid", input.UID)
+	setOptional(query, "daemon_name", input.DaemonName)
+	endpoint.RawQuery = query.Encode()
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Accept", mediaTypeV1_1)
+	body, err := client.do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	var buckets []Bucket
+	if err := json.Unmarshal(body, &buckets); err != nil {
+		return nil, fmt.Errorf("rgw: decode GET %s response: %w", request.URL.Path, err)
+	}
+	return buckets, nil
+}
+
 // GetBucket retrieves a bucket through GET /api/rgw/bucket/{bucket}.
 func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (Bucket, error) {
 	if ctx == nil {
@@ -142,6 +195,86 @@ func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (Bu
 		return Bucket{}, fmt.Errorf("rgw: decode GET %s response: %w", request.URL.Path, err)
 	}
 	return bucket, nil
+}
+
+// UpdateBucketRequest contains the parameters accepted by Ceph's RGW bucket
+// update controller. Name, BucketID, and UID are required. UID is the desired
+// owner and must have an S3 key because Ceph uses that credential for the
+// follow-up S3 configuration calls. EncryptionEnabled is the desired
+// encryption state, matching Ceph Dashboard's frontend.
+type UpdateBucketRequest struct {
+	Name     string
+	BucketID string
+	UID      string
+
+	VersioningState    BucketVersioningState
+	EncryptionEnabled  bool
+	EncryptionType     string
+	KeyID              string
+	MFADelete          string
+	MFATokenSerial     string
+	MFATokenPIN        string
+	LockMode           LockMode
+	LockRetentionDays  *int64
+	LockRetentionYears *int64
+	Tags               string
+	BucketPolicy       string
+	CannedACL          string
+	ReplicationEnabled *bool
+	Lifecycle          string
+	DaemonName         string
+}
+
+// UpdateBucket updates a bucket through PUT /api/rgw/bucket/{bucket}.
+//
+// Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
+//   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwBucket.set)
+//   - src/pybind/mgr/dashboard/frontend/src/app/shared/api/rgw-bucket.service.ts
+//   - src/pybind/mgr/dashboard/services/rgw_client.py
+//   - qa/tasks/mgr/dashboard/test_rgw.py (RgwBucketTest.test_all)
+func (client *Client) UpdateBucket(ctx context.Context, input UpdateBucketRequest) error {
+	if ctx == nil {
+		return errors.New("rgw: context must not be nil")
+	}
+	if strings.TrimSpace(input.Name) == "" {
+		return errors.New("rgw: bucket name must not be empty")
+	}
+	if strings.TrimSpace(input.BucketID) == "" {
+		return errors.New("rgw: bucket ID must not be empty")
+	}
+	if strings.TrimSpace(input.UID) == "" {
+		return errors.New("rgw: bucket UID must not be empty")
+	}
+
+	endpoint := client.bucketEndpoint(input.Name)
+	query := url.Values{
+		"bucket_id":        {input.BucketID},
+		"uid":              {input.UID},
+		"encryption_state": {strconv.FormatBool(input.EncryptionEnabled)},
+	}
+	setOptional(query, "versioning_state", string(input.VersioningState))
+	setOptional(query, "encryption_type", input.EncryptionType)
+	setOptional(query, "key_id", input.KeyID)
+	setOptional(query, "mfa_delete", input.MFADelete)
+	setOptional(query, "mfa_token_serial", input.MFATokenSerial)
+	setOptional(query, "mfa_token_pin", input.MFATokenPIN)
+	setOptional(query, "lock_mode", string(input.LockMode))
+	setOptionalInt(query, "lock_retention_period_days", input.LockRetentionDays)
+	setOptionalInt(query, "lock_retention_period_years", input.LockRetentionYears)
+	setOptional(query, "tags", input.Tags)
+	setOptional(query, "bucket_policy", input.BucketPolicy)
+	setOptional(query, "canned_acl", input.CannedACL)
+	setOptionalBool(query, "replication", input.ReplicationEnabled)
+	setOptional(query, "lifecycle", input.Lifecycle)
+	setOptional(query, "daemon_name", input.DaemonName)
+	endpoint.RawQuery = query.Encode()
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPut, endpoint.String(), nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.do(request)
+	return err
 }
 
 // DeleteBucket deletes an empty bucket through

@@ -12,8 +12,8 @@ func TestClientAddsRequestMetadata(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if got := request.Header.Get("Accept"); got != defaultMediaType {
-			t.Errorf("Accept = %q, want %q", got, defaultMediaType)
+		if got := request.Header.Get("Accept"); got != mediaTypeV1_0 {
+			t.Errorf("Accept = %q, want %q", got, mediaTypeV1_0)
 		}
 		if got := request.Header.Get("Authorization"); got != "Bearer secret-token" {
 			t.Errorf("Authorization = %q, want Bearer secret-token", got)
@@ -33,6 +33,32 @@ func TestClientAddsRequestMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := client.do(request); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestClientPreservesRequestMediaType(t *testing.T) {
+	t.Parallel()
+
+	const mediaType = "application/vnd.ceph.api.v1.1+json"
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if got := request.Header.Get("Accept"); got != mediaType {
+			t.Errorf("Accept = %q, want %q", got, mediaType)
+		}
+		writer.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := http.NewRequest(http.MethodGet, client.endpoint("api/test").String(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Accept", mediaType)
 	if _, err := client.do(request); err != nil {
 		t.Fatal(err)
 	}

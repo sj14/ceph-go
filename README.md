@@ -6,8 +6,11 @@ The implementation was verified on 2026-09-19 against the latest stable Ceph rel
 
 - [Stable release metadata](https://github.com/ceph/ceph/blob/main/doc/releases/releases.yml)
 - [`RgwBucket.create`](https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/dashboard/controllers/rgw.py)
+- [`RgwBucket.list`](https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/dashboard/controllers/rgw.py)
 - [`RgwBucket.get`](https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/dashboard/controllers/rgw.py)
+- [`RgwBucket.set`](https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/dashboard/controllers/rgw.py)
 - [`RgwBucket.delete`](https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/dashboard/controllers/rgw.py)
+- [`RgwUser`](https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/dashboard/controllers/rgw.py)
 - [Ceph Dashboard's RGW bucket frontend client](https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/dashboard/frontend/src/app/shared/api/rgw-bucket.service.ts)
 - [`RgwClient.create_bucket`](https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/dashboard/services/rgw_client.py)
 - [REST routing and status mapping](https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/dashboard/controllers/_rest_controller.py)
@@ -22,8 +25,8 @@ not yet implemented. Controller helpers that are not HTTP endpoints are omitted.
 
 - [x] `CreateBucket` — `POST /api/rgw/bucket`
 - [x] `GetBucket` — `GET /api/rgw/bucket/{bucket}`
-- [ ] List buckets — `GET /api/rgw/bucket` (API version 1.1)
-- [ ] Update bucket — `PUT /api/rgw/bucket/{bucket}`
+- [x] `ListBuckets` — `GET /api/rgw/bucket?stats=true` (API version 1.1)
+- [x] `UpdateBucket` — `PUT /api/rgw/bucket/{bucket}`
 - [x] `DeleteBucket` — `DELETE /api/rgw/bucket/{bucket}`
 - [ ] Set encryption configuration — `PUT /api/rgw/bucket/setEncryptionConfig`
 - [ ] Get bucket encryption — `GET /api/rgw/bucket/getEncryption`
@@ -76,14 +79,14 @@ not yet implemented. Controller helpers that are not HTTP endpoints are omitted.
 - [x] `CreateUser` — `POST /api/rgw/user`
 - [x] `UpdateUser` — `PUT /api/rgw/user/{uid}`
 - [x] `DeleteUser` — `DELETE /api/rgw/user/{uid}`
-- [ ] Add user capability — `POST /api/rgw/user/{uid}/capability`
-- [ ] Delete user capability — `DELETE /api/rgw/user/{uid}/capability`
+- [x] `AddUserCapability` — `POST /api/rgw/user/{uid}/capability`
+- [x] `DeleteUserCapability` — `DELETE /api/rgw/user/{uid}/capability`
 - [x] `CreateAccessKey` — `POST /api/rgw/user/{uid}/key`
 - [x] `DeleteAccessKey` — `DELETE /api/rgw/user/{uid}/key`
-- [ ] Get user quota — `GET /api/rgw/user/{uid}/quota`
-- [ ] Update user quota — `PUT /api/rgw/user/{uid}/quota`
-- [ ] Create subuser — `POST /api/rgw/user/{uid}/subuser`
-- [ ] Delete subuser — `DELETE /api/rgw/user/{uid}/subuser/{subuser}`
+- [x] `GetUserQuota` — `GET /api/rgw/user/{uid}/quota`
+- [x] `UpdateUserQuota` — `PUT /api/rgw/user/{uid}/quota`
+- [x] `CreateSubuser` — `POST /api/rgw/user/{uid}/subuser`
+- [x] `DeleteSubuser` — `DELETE /api/rgw/user/{uid}/subuser/{subuser}`
 - [ ] Get global user rate limits — `GET /api/rgw/user/ratelimit`
 - [ ] Get user rate limits — `GET /api/rgw/user/{uid}/ratelimit`
 - [ ] Update user rate limits — `PUT /api/rgw/user/{uid}/ratelimit`

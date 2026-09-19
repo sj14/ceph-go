@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	defaultMediaType = "application/vnd.ceph.api.v1.0+json"
-	maxResponseBody  = 4 << 20
+	mediaTypeV1_0   = "application/vnd.ceph.api.v1.0+json"
+	mediaTypeV1_1   = "application/vnd.ceph.api.v1.1+json"
+	maxResponseBody = 4 << 20
 )
 
 // Client calls the Ceph Dashboard API.
@@ -102,7 +103,9 @@ func (client *Client) endpoint(path string) *url.URL {
 }
 
 func (client *Client) do(request *http.Request) ([]byte, error) {
-	request.Header.Set("Accept", defaultMediaType)
+	if request.Header.Get("Accept") == "" {
+		request.Header.Set("Accept", mediaTypeV1_0)
+	}
 	if client.token != "" {
 		request.Header.Set("Authorization", "Bearer "+client.token)
 	}

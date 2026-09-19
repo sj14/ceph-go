@@ -427,6 +427,13 @@ func (client *Client) userResourceEndpoint(uid, resource string) *url.URL {
 	return endpoint
 }
 
+func (client *Client) userResourceItemEndpoint(uid, resource, item string) *url.URL {
+	endpoint := client.userResourceEndpoint(uid, resource)
+	endpoint.Path = strings.TrimRight(endpoint.Path, "/") + "/" + item
+	endpoint.RawPath = strings.TrimRight(endpoint.RawPath, "/") + "/" + url.PathEscape(item)
+	return endpoint
+}
+
 func (client *Client) doUserRequest(request *http.Request) (User, error) {
 	body, err := client.do(request)
 	if err != nil {
