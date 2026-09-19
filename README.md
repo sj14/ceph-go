@@ -69,12 +69,12 @@ not yet implemented. Controller helpers that are not HTTP endpoints are omitted.
 
 ### Users and access credentials
 
-- [ ] List users — `GET /api/rgw/user`
-- [ ] Get user — `GET /api/rgw/user/{uid}`
+- [x] `ListUsers` — `GET /api/rgw/user?detailed=true`
+- [x] `GetUser` — `GET /api/rgw/user/{uid}`
 - [ ] Get user email addresses — `RgwUser.get_emails`
-- [ ] Create user — `POST /api/rgw/user`
-- [ ] Update user — `PUT /api/rgw/user/{uid}`
-- [ ] Delete user — `DELETE /api/rgw/user/{uid}`
+- [x] `CreateUser` — `POST /api/rgw/user`
+- [x] `UpdateUser` — `PUT /api/rgw/user/{uid}`
+- [x] `DeleteUser` — `DELETE /api/rgw/user/{uid}`
 - [ ] Add user capability — `POST /api/rgw/user/{uid}/capability`
 - [ ] Delete user capability — `DELETE /api/rgw/user/{uid}/capability`
 - [ ] Create access key — `POST /api/rgw/user/{uid}/key`

@@ -32,6 +32,64 @@ func main() {
 	name := fmt.Sprintf("rgw-go-smoke-%d", time.Now().UnixNano())
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	userID := fmt.Sprintf("rgw-go-smoke-user-%d", time.Now().UnixNano())
+	generateKey := false
+	userCreated := false
+	defer func() {
+		if userCreated {
+			cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cleanupCancel()
+			_ = client.DeleteUser(cleanupCtx, rgw.DeleteUserRequest{UID: userID})
+		}
+	}()
+	user, err := client.CreateUser(ctx, rgw.CreateUserRequest{
+		UID:         userID,
+		DisplayName: "rgw-go smoke user",
+		GenerateKey: &generateKey,
+	})
+	if err != nil {
+		fatal(err)
+	}
+	userCreated = true
+	if user.UID != userID {
+		fatal(fmt.Errorf("created unexpected user: uid=%q", user.UID))
+	}
+	user, err = client.GetUser(ctx, rgw.GetUserRequest{UID: userID})
+	if err != nil {
+		fatal(err)
+	}
+	if user.DisplayName != "rgw-go smoke user" || user.Stats == nil {
+		fatal(fmt.Errorf("retrieved unexpected user: uid=%q display_name=%q stats=%v",
+			user.UID, user.DisplayName, user.Stats))
+	}
+	users, err := client.ListUsers(ctx, rgw.ListUsersRequest{})
+	if err != nil {
+		fatal(err)
+	}
+	foundUser := false
+	for _, listedUser := range users {
+		if listedUser.UID == userID {
+			foundUser = true
+			break
+		}
+	}
+	if !foundUser {
+		fatal(fmt.Errorf("created user %q is missing from user list", userID))
+	}
+	email := "smoke@example.invalid"
+	user, err = client.UpdateUser(ctx, rgw.UpdateUserRequest{UID: userID, Email: &email})
+	if err != nil {
+		fatal(err)
+	}
+	if user.Email != email {
+		fatal(fmt.Errorf("updated unexpected user: uid=%q email=%q", user.UID, user.Email))
+	}
+	if err := client.DeleteUser(ctx, rgw.DeleteUserRequest{UID: userID}); err != nil {
+		fatal(err)
+	}
+	userCreated = false
+
 	if err := client.CreateBucket(ctx, rgw.CreateBucketRequest{Name: name, UID: "rgw-go-test"}); err != nil {
 		fatal(err)
 	}
@@ -42,7 +100,7 @@ func main() {
 	if bucket.Name != name || bucket.Owner != "rgw-go-test" {
 		fatal(fmt.Errorf("unexpected bucket: name=%q owner=%q", bucket.Name, bucket.Owner))
 	}
-	fmt.Printf("created and retrieved bucket %q\n", name)
+	fmt.Printf("completed user CRUD for %q and created and retrieved bucket %q\n", userID, name)
 }
 
 func authenticate(baseURL, username, password string) (string, error) {

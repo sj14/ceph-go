@@ -41,7 +41,8 @@ The Dashboard API is available at `http://localhost:8443`; RGW listens at
 and can be overridden through the corresponding environment variables. The
 ephemeral RGW user used by tests is `rgw-go-test`.
 
-Run a real Create/Get Bucket round trip after the container is healthy:
+Run real User CRUD and Create/Get Bucket round trips after the container is
+healthy:
 
 ```sh
 go run ./test/ceph/smoke
