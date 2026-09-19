@@ -25,10 +25,10 @@ library calls.
 For reference, the summed compressed `linux/amd64` layers inspected on
 2026-09-19 were 636 MB for `quay.io/ceph/ceph:v21`, 543 MB for
 `quay.io/ceph/ceph:v20.2.4`, and 468 MB for `quay.io/ceph/demo:latest`. This
-image measured 339 MB of local content (1.26 GB unpacked) on the same platform.
-It installs only the required RPMs, disables weak dependencies, and uses an
-in-memory OSD. The Dashboard and Ceph's shared libraries impose most of the
-remaining lower bound.
+AlmaLinux-based image measured 325 MB of local content (1.21 GB unpacked) on
+the same platform. It installs only the required RPMs, disables weak
+dependencies, and uses an in-memory OSD. The Dashboard and Ceph's shared
+libraries impose most of the remaining lower bound.
 
 ## Run
 
@@ -57,7 +57,7 @@ The runtime packages and endpoint contracts use Ceph's latest stable release,
 `v20.2.4`, tag commit `7f793731f1b39eb4f465e960113d2363c311b964`.
 The release RPM normally configures the moving `rpm-tentacle` channel, so the
 build rewrites that URL to the immutable `rpm-20.2.4` repository. The release
-RPM checksum and base-image digest are pinned as well.
+RPM checksum and AlmaLinux base-image digest are pinned as well.
 
 This deliberately is not a production Ceph deployment: all cluster data lives
 on tmpfs, replication is disabled, SSL is disabled, credentials are test
