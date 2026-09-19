@@ -135,7 +135,7 @@ func TestGetBucketReturnsDecodeError(t *testing.T) {
 		t.Fatal(err)
 	}
 	bucket, err := client.GetBucket(context.Background(), GetBucketRequest{Name: "photos"})
-	if err == nil || bucket != nil {
+	if err == nil || !reflect.DeepEqual(bucket, Bucket{}) {
 		t.Fatalf("GetBucket() = %#v, %v; want decode error", bucket, err)
 	}
 }

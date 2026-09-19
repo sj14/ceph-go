@@ -14,6 +14,7 @@ This repository provides a Go client for Ceph's RGW management endpoints exposed
 
 - Keep the public API idiomatic and context-aware.
 - Return decoded domain models and errors from endpoint methods. Keep HTTP status, headers, and raw successful response bodies internal unless an endpoint exposes meaningful transport metadata that callers need.
+- Return single resources by value as `(Resource, error)`, collections as `([]Resource, error)`, and actions without a meaningful result as `error`. Use pointers within models only for nullable fields or when absence must be distinguishable from a zero value.
 - Preserve Ceph's actual HTTP method, route, media type, parameter location, parameter names, and response status.
 - Add request-level tests with `httptest` for every endpoint.
 - Use the Go standard library unless an external dependency has a clear benefit.

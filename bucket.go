@@ -108,12 +108,12 @@ type BucketReplication struct {
 }
 
 // GetBucket retrieves a bucket through GET /api/rgw/bucket/{bucket}.
-func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (*Bucket, error) {
+func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (Bucket, error) {
 	if ctx == nil {
-		return nil, errors.New("rgw: context must not be nil")
+		return Bucket{}, errors.New("rgw: context must not be nil")
 	}
 	if strings.TrimSpace(input.Name) == "" {
-		return nil, errors.New("rgw: bucket name must not be empty")
+		return Bucket{}, errors.New("rgw: bucket name must not be empty")
 	}
 
 	endpoint := client.endpoint("api/rgw/bucket")
@@ -126,18 +126,18 @@ func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (*B
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 	if err != nil {
-		return nil, err
+		return Bucket{}, err
 	}
 	body, err := client.do(request)
 	if err != nil {
-		return nil, err
+		return Bucket{}, err
 	}
 
 	var bucket Bucket
 	if err := json.Unmarshal(body, &bucket); err != nil {
-		return nil, fmt.Errorf("rgw: decode GET %s response: %w", request.URL.Path, err)
+		return Bucket{}, fmt.Errorf("rgw: decode GET %s response: %w", request.URL.Path, err)
 	}
-	return &bucket, nil
+	return bucket, nil
 }
 
 // CreateBucketRequest contains the arguments accepted by Ceph's RGW bucket
