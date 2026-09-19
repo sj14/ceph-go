@@ -11,6 +11,141 @@ import (
 	"testing"
 )
 
+func TestGetBucket(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet {
+			t.Errorf("method = %q, want GET", request.Method)
+		}
+		if got := request.URL.EscapedPath(); got != "/dashboard/api/rgw/bucket/tenant%2Fphotos%202026" {
+			t.Errorf("escaped path = %q, want encoded bucket path segment", got)
+		}
+		if got := request.URL.Query(); !reflect.DeepEqual(got, url.Values{"daemon_name": {"rgw.one"}}) {
+			t.Errorf("query = %#v, want daemon_name=rgw.one", got)
+		}
+		if got := request.Header.Get("Accept"); got != defaultMediaType {
+			t.Errorf("Accept = %q, want %q", got, defaultMediaType)
+		}
+		if got := request.Header.Get("Authorization"); got != "Bearer secret-token" {
+			t.Errorf("Authorization = %q, want Bearer secret-token", got)
+		}
+
+		writer.Header().Set("Content-Type", defaultMediaType)
+		_, _ = writer.Write([]byte(`{
+			"bucket":"photos 2026",
+			"tenant":"tenant",
+			"bid":"tenant/photos 2026",
+			"zonegroup":"default",
+			"placement_rule":"default-placement",
+			"explicit_placement":{"data_pool":"data","data_extra_pool":"extra","index_pool":"index"},
+			"id":"bucket-id",
+			"marker":"marker",
+			"index_type":"Normal",
+			"index_generation":2,
+			"num_shards":11,
+			"reshard_status":"not-resharding",
+			"judge_reshard_lock_time":"",
+			"object_lock_enabled":true,
+			"mfa_enabled":false,
+			"owner":"alice",
+			"ver":"1#2",
+			"master_ver":"1#2",
+			"mtime":"2026-09-19T12:00:00Z",
+			"creation_time":"2026-09-18T12:00:00Z",
+			"max_marker":"",
+			"usage":{"rgw.main":{"size":12,"size_actual":4096,"size_utilized":12,"size_kb":1,"size_kb_actual":4,"size_kb_utilized":1,"num_objects":3}},
+			"bucket_quota":{"enabled":true,"check_on_raw":false,"max_size":1099511627776,"max_size_kb":1073741824,"max_objects":5000000000},
+			"read_tracker":7,
+			"encryption":"Enabled",
+			"versioning":"Enabled",
+			"mfa_delete":"Disabled",
+			"bucket_policy":{"Version":"2012-10-17"},
+			"acl":"<AccessControlPolicy/>",
+			"replication":{"sync_policy_active":true,"replication_rules_configured":true,"policy":{"Rule":[{"ID":"copy"}]}},
+			"lifecycle":null,
+			"lifecycle_progress":[{"bucket":"photos 2026","status":"COMPLETE"}],
+			"lock_enabled":true,
+			"lock_mode":"COMPLIANCE",
+			"lock_retention_period_days":365,
+			"lock_retention_period_years":null
+		}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL+"/dashboard", WithBearerToken("secret-token"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bucket, response, err := client.GetBucket(context.Background(), GetBucketRequest{
+		Name:       "tenant/photos 2026",
+		DaemonName: "rgw.one",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200", response.StatusCode)
+	}
+	if bucket.Name != "photos 2026" || bucket.Tenant != "tenant" || bucket.BID != "tenant/photos 2026" {
+		t.Errorf("bucket identity = %#v", bucket)
+	}
+	if bucket.Quota.MaxSize != 1099511627776 || bucket.Quota.MaxObjects != 5000000000 {
+		t.Errorf("quota = %#v", bucket.Quota)
+	}
+	if bucket.Usage["rgw.main"].NumObjects != 3 {
+		t.Errorf("usage = %#v", bucket.Usage)
+	}
+	if bucket.LockRetentionDays == nil || *bucket.LockRetentionDays != 365 {
+		t.Errorf("lock retention days = %v, want 365", bucket.LockRetentionDays)
+	}
+	if bucket.LockRetentionYears != nil {
+		t.Errorf("lock retention years = %v, want nil", bucket.LockRetentionYears)
+	}
+	if string(bucket.BucketPolicy) != `{"Version":"2012-10-17"}` {
+		t.Errorf("bucket policy = %s", bucket.BucketPolicy)
+	}
+	if string(bucket.Replication.Policy) != `{"Rule":[{"ID":"copy"}]}` {
+		t.Errorf("replication policy = %s", bucket.Replication.Policy)
+	}
+}
+
+func TestGetBucketValidation(t *testing.T) {
+	t.Parallel()
+
+	client, err := NewClient("https://ceph.example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := client.GetBucket(context.Background(), GetBucketRequest{}); err == nil {
+		t.Fatal("GetBucket() error = nil, want empty name error")
+	}
+	if _, _, err := client.GetBucket(nil, GetBucketRequest{Name: "photos"}); err == nil {
+		t.Fatal("GetBucket() error = nil, want nil context error")
+	}
+}
+
+func TestGetBucketReturnsDecodeError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		_, _ = writer.Write([]byte("not JSON"))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bucket, response, err := client.GetBucket(context.Background(), GetBucketRequest{Name: "photos"})
+	if err == nil || bucket != nil {
+		t.Fatalf("GetBucket() = %#v, %v; want decode error", bucket, err)
+	}
+	if response == nil || string(response.Body) != "not JSON" {
+		t.Fatalf("response = %#v, want raw invalid body", response)
+	}
+}
+
 func TestCreateBucket(t *testing.T) {
 	t.Parallel()
 
