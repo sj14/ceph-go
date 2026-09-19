@@ -5,7 +5,9 @@ This repository provides a Go client for Ceph's RGW management endpoints exposed
 ## Source of truth
 
 - Do not rely on the published Ceph API documentation when implementing or changing an endpoint.
-- Before implementing an endpoint, identify the latest Ceph release tag and inspect the implementation in that tag of <https://github.com/ceph/ceph>.
+- Before implementing an endpoint, identify the latest stable Ceph release from `doc/releases/releases.yml` in Ceph's `main` branch, considering only the `releases` section and excluding `development`.
+- Confirm that the selected tag's `src/ceph_release` file declares `stable`. Do not treat the numerically highest Git tag or the mere presence of downloadable packages as proof of a stable release; Ceph also publishes development and release-candidate tags and artifacts.
+- Inspect the implementation in that stable tag of <https://github.com/ceph/ceph>.
 - Inspect the controller, routing/versioning code, the internal service called by the controller, and the Ceph frontend client or tests when available.
 - Record the verified Ceph release and relevant source files in code comments, tests, or the README so that later updates can be compared deliberately.
 - Treat Ceph's release source code as authoritative when it differs from generated or published documentation.

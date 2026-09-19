@@ -1,0 +1,46 @@
+FROM quay.io/rockylinux/rockylinux:10-minimal@sha256:bc5c1e7a2ec7f4bcef1e51c7f0ebb2d43f05409e0108cdd34f693921d0604360
+
+ARG CEPH_RELEASE=20.2.4
+ARG CEPH_RELEASE_RPM_SHA256=37a7f745da44fcc4ed4cb5f75332b33e5a22b223eadea04f56df37d3834c18b3
+
+RUN set -eux; \
+    microdnf install -y --setopt=install_weak_deps=0 ca-certificates curl epel-release; \
+    sed -i '/^\[crb\]$/,/^$/s/^enabled=0$/enabled=1/' /etc/yum.repos.d/rocky.repo; \
+    rpm --import https://download.ceph.com/keys/release.asc; \
+    curl -fsSLo /tmp/ceph-release.rpm \
+      "https://download.ceph.com/rpm-${CEPH_RELEASE}/el10/noarch/ceph-release-1-1.el10.noarch.rpm"; \
+    echo "${CEPH_RELEASE_RPM_SHA256}  /tmp/ceph-release.rpm" | sha256sum -c -; \
+    rpm -Uvh /tmp/ceph-release.rpm; \
+    sed -i "s|rpm-tentacle|rpm-${CEPH_RELEASE}|g" /etc/yum.repos.d/ceph.repo; \
+    microdnf install -y --setopt=install_weak_deps=0 \
+      ceph-common \
+      ceph-mgr \
+      ceph-mgr-dashboard \
+      ceph-mon \
+      ceph-osd \
+      ceph-radosgw \
+      python3-bcrypt; \
+    microdnf clean all; \
+    rm -rf \
+      /tmp/ceph-release.rpm \
+      /var/cache/dnf \
+      /var/cache/yum \
+      /var/log/dnf* \
+      /var/log/yum* \
+      /usr/share/doc \
+      /usr/share/man \
+      /usr/share/info
+
+COPY entrypoint.sh /usr/local/bin/ceph-test-entrypoint
+
+RUN chmod 0755 /usr/local/bin/ceph-test-entrypoint
+
+ENV CEPH_DASHBOARD_PORT=8443 \
+    CEPH_RGW_PORT=8000
+
+EXPOSE 8000 8443
+
+HEALTHCHECK --interval=5s --timeout=3s --start-period=60s --retries=30 \
+  CMD curl -fsS "http://127.0.0.1:${CEPH_DASHBOARD_PORT}/" >/dev/null || exit 1
+
+ENTRYPOINT ["/usr/local/bin/ceph-test-entrypoint"]

@@ -29,7 +29,7 @@ type GetBucketRequest struct {
 // Bucket is the bucket representation assembled by Ceph Dashboard. Fields
 // whose shape is controlled by RGW configuration are retained as raw JSON.
 //
-// Verified against Ceph v21.3.0 (tag commit cc6b5e2da077):
+// Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
 //   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwBucket.get)
 //   - src/pybind/mgr/dashboard/frontend/src/app/ceph/rgw/models/rgw-bucket.ts
 //   - src/pybind/mgr/dashboard/frontend/src/app/shared/api/rgw-bucket.service.ts
@@ -143,7 +143,7 @@ func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (Bu
 // CreateBucketRequest contains the arguments accepted by Ceph's RGW bucket
 // create controller. Name and UID are required; all other fields are optional.
 //
-// Verified against Ceph v21.3.0 (tag commit cc6b5e2da077):
+// Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
 //   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwBucket.create)
 //   - src/pybind/mgr/dashboard/frontend/src/app/shared/api/rgw-bucket.service.ts
 //   - src/pybind/mgr/dashboard/services/rgw_client.py (create_bucket)
@@ -170,7 +170,7 @@ type CreateBucketRequest struct {
 
 // CreateBucket creates a bucket through POST /api/rgw/bucket.
 //
-// Ceph's own v21.3.0 frontend sends these parameters in the query string with
+// Ceph's own v20.2.4 frontend sends these parameters in the query string with
 // an empty request body, so this method intentionally does the same.
 func (client *Client) CreateBucket(ctx context.Context, input CreateBucketRequest) error {
 	if ctx == nil {

@@ -1,0 +1,15 @@
+services:
+  ceph:
+    build:
+      context: .
+      dockerfile: Containerfile
+    environment:
+      CEPH_DASHBOARD_USER: admin
+      CEPH_DASHBOARD_PASSWORD: admin
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+    tmpfs:
+      - /var/lib/ceph
+      - /run/ceph
+
