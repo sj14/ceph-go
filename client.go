@@ -101,7 +101,7 @@ func (client *Client) endpoint(path string) *url.URL {
 	return &endpoint
 }
 
-func (client *Client) do(request *http.Request) (*Response, error) {
+func (client *Client) do(request *http.Request) ([]byte, error) {
 	request.Header.Set("Accept", defaultMediaType)
 	if client.token != "" {
 		request.Header.Set("Authorization", "Bearer "+client.token)
@@ -124,13 +124,8 @@ func (client *Client) do(request *http.Request) (*Response, error) {
 		return nil, fmt.Errorf("rgw: %s %s response exceeds %d bytes", request.Method, request.URL.Path, maxResponseBody)
 	}
 
-	response := &Response{
-		StatusCode: httpResponse.StatusCode,
-		Header:     httpResponse.Header.Clone(),
-		Body:       body,
-	}
 	if httpResponse.StatusCode < http.StatusOK || httpResponse.StatusCode >= http.StatusMultipleChoices {
-		return response, &APIError{
+		return nil, &APIError{
 			StatusCode: httpResponse.StatusCode,
 			Method:     request.Method,
 			Path:       request.URL.Path,
@@ -138,16 +133,7 @@ func (client *Client) do(request *http.Request) (*Response, error) {
 		}
 	}
 
-	return response, nil
-}
-
-// Response contains the HTTP metadata and raw body returned by Ceph.
-// Create-bucket commonly returns JSON null because RGW's S3 PUT response has
-// no useful representation.
-type Response struct {
-	StatusCode int
-	Header     http.Header
-	Body       []byte
+	return body, nil
 }
 
 // APIError is returned for non-2xx Ceph Dashboard responses.

@@ -77,15 +77,12 @@ func TestGetBucket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bucket, response, err := client.GetBucket(context.Background(), GetBucketRequest{
+	bucket, err := client.GetBucket(context.Background(), GetBucketRequest{
 		Name:       "tenant/photos 2026",
 		DaemonName: "rgw.one",
 	})
 	if err != nil {
 		t.Fatal(err)
-	}
-	if response.StatusCode != http.StatusOK {
-		t.Errorf("status = %d, want 200", response.StatusCode)
 	}
 	if bucket.Name != "photos 2026" || bucket.Tenant != "tenant" || bucket.BID != "tenant/photos 2026" {
 		t.Errorf("bucket identity = %#v", bucket)
@@ -117,10 +114,10 @@ func TestGetBucketValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := client.GetBucket(context.Background(), GetBucketRequest{}); err == nil {
+	if _, err := client.GetBucket(context.Background(), GetBucketRequest{}); err == nil {
 		t.Fatal("GetBucket() error = nil, want empty name error")
 	}
-	if _, _, err := client.GetBucket(nil, GetBucketRequest{Name: "photos"}); err == nil {
+	if _, err := client.GetBucket(nil, GetBucketRequest{Name: "photos"}); err == nil {
 		t.Fatal("GetBucket() error = nil, want nil context error")
 	}
 }
@@ -137,12 +134,9 @@ func TestGetBucketReturnsDecodeError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bucket, response, err := client.GetBucket(context.Background(), GetBucketRequest{Name: "photos"})
+	bucket, err := client.GetBucket(context.Background(), GetBucketRequest{Name: "photos"})
 	if err == nil || bucket != nil {
 		t.Fatalf("GetBucket() = %#v, %v; want decode error", bucket, err)
-	}
-	if response == nil || string(response.Body) != "not JSON" {
-		t.Fatalf("response = %#v, want raw invalid body", response)
 	}
 }
 
@@ -202,7 +196,7 @@ func TestCreateBucket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err := client.CreateBucket(context.Background(), CreateBucketRequest{
+	err = client.CreateBucket(context.Background(), CreateBucketRequest{
 		Name:               "backups",
 		UID:                "alice",
 		Zonegroup:          "default",
@@ -221,12 +215,6 @@ func TestCreateBucket(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
-	}
-	if response.StatusCode != http.StatusCreated {
-		t.Errorf("status = %d, want 201", response.StatusCode)
-	}
-	if string(response.Body) != "null" {
-		t.Errorf("body = %q, want null", response.Body)
 	}
 }
 
@@ -252,7 +240,7 @@ func TestCreateBucketMinimalRequestIncludesCephDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.CreateBucket(context.Background(), CreateBucketRequest{Name: "photos", UID: "bob"}); err != nil {
+	if err := client.CreateBucket(context.Background(), CreateBucketRequest{Name: "photos", UID: "bob"}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -270,10 +258,7 @@ func TestCreateBucketReturnsAPIError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err := client.CreateBucket(context.Background(), CreateBucketRequest{Name: "photos", UID: "bob"})
-	if response == nil || response.StatusCode != http.StatusConflict {
-		t.Fatalf("response = %#v, want status 409", response)
-	}
+	err = client.CreateBucket(context.Background(), CreateBucketRequest{Name: "photos", UID: "bob"})
 	var apiError *APIError
 	if !errors.As(err, &apiError) {
 		t.Fatalf("error = %v, want *APIError", err)
@@ -302,7 +287,7 @@ func TestCreateBucketValidation(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := client.CreateBucket(context.Background(), test.input); err == nil {
+			if err := client.CreateBucket(context.Background(), test.input); err == nil {
 				t.Fatal("CreateBucket() error = nil, want validation error")
 			}
 		})

@@ -21,16 +21,15 @@ if err != nil {
     log.Fatal(err)
 }
 
-response, err := client.CreateBucket(ctx, rgw.CreateBucketRequest{
+err = client.CreateBucket(ctx, rgw.CreateBucketRequest{
     Name: "backups",
     UID:  "alice",
 })
 if err != nil {
     log.Fatal(err)
 }
-log.Printf("created bucket: HTTP %d", response.StatusCode)
 
-bucket, _, err := client.GetBucket(ctx, rgw.GetBucketRequest{
+bucket, err := client.GetBucket(ctx, rgw.GetBucketRequest{
     Name: "backups",
 })
 if err != nil {

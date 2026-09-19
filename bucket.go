@@ -28,7 +28,6 @@ type GetBucketRequest struct {
 
 // Bucket is the bucket representation assembled by Ceph Dashboard. Fields
 // whose shape is controlled by RGW configuration are retained as raw JSON.
-// The complete, unmodified response is also available through Response.Body.
 //
 // Verified against Ceph v21.3.0 (tag commit cc6b5e2da077):
 //   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwBucket.get)
@@ -109,12 +108,12 @@ type BucketReplication struct {
 }
 
 // GetBucket retrieves a bucket through GET /api/rgw/bucket/{bucket}.
-func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (*Bucket, *Response, error) {
+func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (*Bucket, error) {
 	if ctx == nil {
-		return nil, nil, errors.New("rgw: context must not be nil")
+		return nil, errors.New("rgw: context must not be nil")
 	}
 	if strings.TrimSpace(input.Name) == "" {
-		return nil, nil, errors.New("rgw: bucket name must not be empty")
+		return nil, errors.New("rgw: bucket name must not be empty")
 	}
 
 	endpoint := client.endpoint("api/rgw/bucket")
@@ -127,18 +126,18 @@ func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (*B
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	response, err := client.do(request)
+	body, err := client.do(request)
 	if err != nil {
-		return nil, response, err
+		return nil, err
 	}
 
 	var bucket Bucket
-	if err := json.Unmarshal(response.Body, &bucket); err != nil {
-		return nil, response, fmt.Errorf("rgw: decode GET %s response: %w", request.URL.Path, err)
+	if err := json.Unmarshal(body, &bucket); err != nil {
+		return nil, fmt.Errorf("rgw: decode GET %s response: %w", request.URL.Path, err)
 	}
-	return &bucket, response, nil
+	return &bucket, nil
 }
 
 // CreateBucketRequest contains the arguments accepted by Ceph's RGW bucket
@@ -173,15 +172,15 @@ type CreateBucketRequest struct {
 //
 // Ceph's own v21.3.0 frontend sends these parameters in the query string with
 // an empty request body, so this method intentionally does the same.
-func (client *Client) CreateBucket(ctx context.Context, input CreateBucketRequest) (*Response, error) {
+func (client *Client) CreateBucket(ctx context.Context, input CreateBucketRequest) error {
 	if ctx == nil {
-		return nil, errors.New("rgw: context must not be nil")
+		return errors.New("rgw: context must not be nil")
 	}
 	if strings.TrimSpace(input.Name) == "" {
-		return nil, errors.New("rgw: bucket name must not be empty")
+		return errors.New("rgw: bucket name must not be empty")
 	}
 	if strings.TrimSpace(input.UID) == "" {
-		return nil, errors.New("rgw: bucket UID must not be empty")
+		return errors.New("rgw: bucket UID must not be empty")
 	}
 	endpoint := client.endpoint("api/rgw/bucket")
 	query := url.Values{
@@ -206,9 +205,10 @@ func (client *Client) CreateBucket(ctx context.Context, input CreateBucketReques
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return client.do(request)
+	_, err = client.do(request)
+	return err
 }
 
 func setOptional(values url.Values, name, value string) {
