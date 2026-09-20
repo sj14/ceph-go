@@ -235,6 +235,7 @@ const (
 	ErrNoSuchUser      ErrorCode = "NoSuchUser"
 	ErrNoSuchBucket    ErrorCode = "NoSuchBucket"
 	ErrUserExists      ErrorCode = "UserAlreadyExists"
+	ErrAccountExists   ErrorCode = "AccountAlreadyExists"
 	ErrInvalidArgument ErrorCode = "InvalidArgument"
 	ErrAccessDenied    ErrorCode = "AccessDenied"
 )

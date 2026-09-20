@@ -201,11 +201,11 @@ of an existing bucket; bucket creation remains an S3 operation.
 
 ### Accounts
 
-- [ ] Get account — `GET /admin/account`
-- [ ] Create account — `POST /admin/account`
-- [ ] Update account — `PUT /admin/account`
-- [ ] Set account quota — `PUT /admin/account?quota`
-- [ ] Delete account — `DELETE /admin/account`
+- [x] `GetAccount` — `GET /admin/account`
+- [x] `CreateAccount` — `POST /admin/account`
+- [x] `UpdateAccount` — `PUT /admin/account`
+- [x] `SetAccountQuota` — `PUT /admin/account?quota`
+- [x] `DeleteAccount` — `DELETE /admin/account`
 
 ### Usage and gateway information
 

@@ -168,7 +168,7 @@ if ! radosgw-admin user info --uid "$admin_rgw_user" >/dev/null 2>&1; then
     --access-key "$admin_rgw_access_key" \
     --secret-key "$admin_rgw_secret_key" >/dev/null
 fi
-radosgw-admin caps add --uid "$admin_rgw_user" --caps 'users=*;buckets=*' >/dev/null
+radosgw-admin caps add --uid "$admin_rgw_user" --caps 'users=*;buckets=*;accounts=*' >/dev/null
 
 log 'Configuring dashboard'
 ceph config set mgr mgr/dashboard/ssl false

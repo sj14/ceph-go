@@ -10,11 +10,14 @@ import (
 	"strings"
 )
 
+// QuotaScope identifies a quota object accepted by user and account Admin Ops
+// endpoints.
 type QuotaScope string
 
 const (
-	QuotaScopeUser   QuotaScope = "user"
-	QuotaScopeBucket QuotaScope = "bucket"
+	QuotaScopeUser    QuotaScope = "user"
+	QuotaScopeBucket  QuotaScope = "bucket"
+	QuotaScopeAccount QuotaScope = "account"
 )
 
 type UserQuotas struct {
