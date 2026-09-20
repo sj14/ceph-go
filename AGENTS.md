@@ -40,5 +40,18 @@ This repository provides a Go client for Ceph's RGW management endpoints exposed
   fixtures or mocks of Ceph internals.
 - Use the Go standard library unless an external dependency has a clear benefit.
 - Run `gofmt`, `go test -short ./...`, and `go vet ./...` after changes. When
-  the Ceph container is available, also run `go test ./test/ceph/integration`;
+  the Ceph container is available, also run `go test ./test/ceph/integration/...`;
   integration tests use `testing.Short()` as their only skip mechanism.
+
+## CI and Ceph test image
+
+- Reference GitHub Actions by their major-version tag so compatible minor and
+  patch releases are adopted automatically; do not pin actions to commit hashes.
+- Keep ordinary CI on the prebuilt `rgw-go-ceph-test:main` image and start it
+  with `docker compose --no-build --pull always`. Do not rebuild Ceph for each
+  library change.
+- Build the Ceph image from `main` only when its build inputs change or when the
+  image workflow is started manually. Test the candidate by immutable digest
+  before promoting it to the moving `main` tag.
+- Keep local Compose usage able to build the image directly when
+  `CEPH_TEST_IMAGE` is not set.
