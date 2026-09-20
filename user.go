@@ -53,7 +53,7 @@ type User struct {
 	CreateDate          string           `json:"create_date"`
 	Tags                []UserTag        `json:"tags"`
 	GroupIDs            []string         `json:"group_ids"`
-	Stats               *UserStats       `json:"stats,omitempty"`
+	Stats               *StorageStats    `json:"stats,omitempty"`
 	ManagedPolicies     []string         `json:"managed_user_policies,omitempty"`
 }
 
@@ -108,17 +108,6 @@ type UserTempURLKey struct {
 type UserTag struct {
 	Key   string `json:"key"`
 	Value string `json:"val"`
-}
-
-// UserStats contains aggregate object and byte usage for a user.
-type UserStats struct {
-	Size           int64 `json:"size"`
-	SizeActual     int64 `json:"size_actual"`
-	SizeUtilized   int64 `json:"size_utilized"`
-	SizeKB         int64 `json:"size_kb"`
-	SizeKBActual   int64 `json:"size_kb_actual"`
-	SizeKBUtilized int64 `json:"size_kb_utilized"`
-	NumObjects     int64 `json:"num_objects"`
 }
 
 // ListUsersRequest selects the RGW daemon through which Ceph Dashboard should

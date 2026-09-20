@@ -23,6 +23,10 @@ This repository provides a Go client for Ceph's RGW management endpoints exposed
   force genuinely open-ended fields into enums. When Ceph uses different wire
   representations or values for requests and responses, use separate types
   and constants for the two representations.
+- Reuse one Go model when multiple fields or endpoints originate from the same
+  Ceph source type and wire representation. Name shared models for the Ceph
+  domain concept rather than for one endpoint, and do not duplicate identical
+  structs merely because they occur in different controller families.
 - Return decoded domain models and errors from endpoint methods. Keep HTTP status, headers, and raw successful response bodies internal unless an endpoint exposes meaningful transport metadata that callers need.
 - Return single resources by value as `(Resource, error)`, collections as `([]Resource, error)`, and actions without a meaningful result as `error`. Use pointers within models only for nullable fields or when absence must be distinguishable from a zero value.
 - Preserve Ceph's actual HTTP method, route, media type, parameter location, parameter names, and response status.

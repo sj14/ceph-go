@@ -117,7 +117,7 @@ type Bucket struct {
 	MTime                string                  `json:"mtime"`
 	CreationTime         string                  `json:"creation_time"`
 	MaxMarker            string                  `json:"max_marker"`
-	Usage                map[string]BucketUsage  `json:"usage"`
+	Usage                map[string]StorageStats `json:"usage"`
 	Quota                BucketQuota             `json:"bucket_quota"`
 	ReadTracker          int64                   `json:"read_tracker"`
 	Encryption           BucketEncryptionStatus  `json:"encryption"`
@@ -139,17 +139,6 @@ type BucketExplicitPlacement struct {
 	DataPool      string `json:"data_pool"`
 	DataExtraPool string `json:"data_extra_pool"`
 	IndexPool     string `json:"index_pool"`
-}
-
-// BucketUsage contains usage counters for one RGW storage category.
-type BucketUsage struct {
-	Size           int64 `json:"size"`
-	SizeActual     int64 `json:"size_actual"`
-	SizeUtilized   int64 `json:"size_utilized"`
-	SizeKB         int64 `json:"size_kb"`
-	SizeKBActual   int64 `json:"size_kb_actual"`
-	SizeKBUtilized int64 `json:"size_kb_utilized"`
-	NumObjects     int64 `json:"num_objects"`
 }
 
 // BucketQuota contains the bucket-level RGW quota.
