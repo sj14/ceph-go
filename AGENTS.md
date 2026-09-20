@@ -15,6 +15,14 @@ This repository provides a Go client for Ceph's RGW management endpoints exposed
 ## Go implementation
 
 - Keep the public API idiomatic and context-aware.
+- Model source-verified finite or well-known wire values as named Go types with
+  constants when implementing an endpoint or response model. Use the Go
+  underlying type that matches the actual wire representation, such as
+  `string` or `int64`, so callers can still explicitly convert values added by
+  other Ceph versions. Do not invent constants for undocumented values or
+  force genuinely open-ended fields into enums. When Ceph uses different wire
+  representations or values for requests and responses, use separate types
+  and constants for the two representations.
 - Return decoded domain models and errors from endpoint methods. Keep HTTP status, headers, and raw successful response bodies internal unless an endpoint exposes meaningful transport metadata that callers need.
 - Return single resources by value as `(Resource, error)`, collections as `([]Resource, error)`, and actions without a meaningful result as `error`. Use pointers within models only for nullable fields or when absence must be distinguishable from a zero value.
 - Preserve Ceph's actual HTTP method, route, media type, parameter location, parameter names, and response status.

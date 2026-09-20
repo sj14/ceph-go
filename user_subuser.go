@@ -28,6 +28,20 @@ const (
 	SubuserAccessFull      SubuserAccess = "full"
 )
 
+// SubuserPermission is the normalized access level returned by RGW. Ceph uses
+// different spellings for the combined and full permissions in responses.
+type SubuserPermission string
+
+const (
+	SubuserPermissionNone        SubuserPermission = "<none>"
+	SubuserPermissionRead        SubuserPermission = "read"
+	SubuserPermissionWrite       SubuserPermission = "write"
+	SubuserPermissionReadWrite   SubuserPermission = "read-write"
+	SubuserPermissionFullControl SubuserPermission = "full-control"
+	SubuserPermissionReadACP     SubuserPermission = "read-acp"
+	SubuserPermissionWriteACP    SubuserPermission = "write-acp"
+)
+
 // CreateSubuserRequest contains the parameters accepted by Ceph's RGW
 // subuser controller. UID, Subuser, and Access are required. Access accepts
 // "read", "write", "readwrite", or "full".

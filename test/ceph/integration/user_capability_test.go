@@ -15,13 +15,13 @@ func TestAddUserCapability(t *testing.T) {
 
 	capabilities, err := client.AddUserCapability(ctx, rgw.AddUserCapabilityRequest{
 		UID:        fixture.uid,
-		Type:       "usage",
-		Permission: "read",
+		Type:       rgw.UserCapabilityTypeUsage,
+		Permission: rgw.UserCapabilityPermissionRead,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasCapability(capabilities, "usage", "read") {
+	if !hasCapability(capabilities, rgw.UserCapabilityTypeUsage, rgw.UserCapabilityPermissionRead) {
 		t.Fatalf("created capabilities = %#v", capabilities)
 	}
 }
@@ -34,8 +34,8 @@ func TestDeleteUserCapability(t *testing.T) {
 	fixture, _ := createUserFixture(t, client, ctx)
 	request := rgw.AddUserCapabilityRequest{
 		UID:        fixture.uid,
-		Type:       "usage",
-		Permission: "read",
+		Type:       rgw.UserCapabilityTypeUsage,
+		Permission: rgw.UserCapabilityPermissionRead,
 	}
 	if _, err := client.AddUserCapability(ctx, request); err != nil {
 		t.Fatal(err)
@@ -57,7 +57,8 @@ func TestDeleteUserCapability(t *testing.T) {
 	}
 }
 
-func hasCapability(capabilities []rgw.UserCapability, capabilityType, permission string) bool {
+func hasCapability(capabilities []rgw.UserCapability, capabilityType rgw.UserCapabilityType,
+	permission rgw.UserCapabilityPermission) bool {
 	for _, capability := range capabilities {
 		if capability.Type == capabilityType && capability.Permission == permission {
 			return true

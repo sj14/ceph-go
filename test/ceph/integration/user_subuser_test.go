@@ -23,7 +23,7 @@ func TestCreateSubuser(t *testing.T) {
 		t.Fatal(err)
 	}
 	subuser, found := findSubuser(subusers, fixture.uid+":reader")
-	if !found || subuser.Permissions != "read" {
+	if !found || subuser.Permissions != rgw.SubuserPermissionRead {
 		t.Fatalf("created subusers = %#v", subusers)
 	}
 }

@@ -126,7 +126,7 @@ func TestUpdateBucket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bucket.Owner != "rgw-go-test" || bucket.Versioning != string(rgw.BucketVersioningEnabled) {
+	if bucket.Owner != "rgw-go-test" || bucket.Versioning != rgw.BucketVersioningEnabled {
 		t.Fatalf("updated bucket = %#v", bucket)
 	}
 }

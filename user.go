@@ -59,8 +59,8 @@ type User struct {
 
 // UserSubuser is an RGW subuser belonging to a user.
 type UserSubuser struct {
-	ID          string `json:"id"`
-	Permissions string `json:"permissions"`
+	ID          string            `json:"id"`
+	Permissions SubuserPermission `json:"permissions"`
 }
 
 // UserAccessKey is an S3 access credential returned with a user when the
@@ -84,8 +84,8 @@ type UserSwiftKey struct {
 
 // UserCapability is one RGW administrative capability.
 type UserCapability struct {
-	Type       string `json:"type"`
-	Permission string `json:"perm"`
+	Type       UserCapabilityType       `json:"type"`
+	Permission UserCapabilityPermission `json:"perm"`
 }
 
 // UserQuota contains either the user-level or bucket-level quota returned for

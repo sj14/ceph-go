@@ -46,6 +46,43 @@ type BucketVersioningState string
 const (
 	BucketVersioningEnabled   BucketVersioningState = "Enabled"
 	BucketVersioningSuspended BucketVersioningState = "Suspended"
+	BucketVersioningOff       BucketVersioningState = "Off"
+)
+
+// BucketMFADeleteState is the MFA Delete state returned and accepted by Ceph.
+type BucketMFADeleteState string
+
+const (
+	BucketMFADeleteEnabled  BucketMFADeleteState = "Enabled"
+	BucketMFADeleteDisabled BucketMFADeleteState = "Disabled"
+)
+
+// BucketEncryptionStatus is the server-side encryption status returned by
+// Ceph for a bucket.
+type BucketEncryptionStatus string
+
+const (
+	BucketEncryptionEnabled  BucketEncryptionStatus = "Enabled"
+	BucketEncryptionDisabled BucketEncryptionStatus = "Disabled"
+)
+
+// BucketEncryptionType selects the S3 server-side encryption algorithm.
+type BucketEncryptionType string
+
+const (
+	BucketEncryptionAES256 BucketEncryptionType = "AES256"
+	BucketEncryptionAWSKMS BucketEncryptionType = "aws:kms"
+)
+
+// BucketCannedACL is a canned S3 ACL value. The constants are the values
+// exposed by Ceph Dashboard; callers can convert other RGW-supported values.
+type BucketCannedACL string
+
+const (
+	BucketCannedACLPrivate           BucketCannedACL = "private"
+	BucketCannedACLPublicRead        BucketCannedACL = "public-read"
+	BucketCannedACLPublicReadWrite   BucketCannedACL = "public-read-write"
+	BucketCannedACLAuthenticatedRead BucketCannedACL = "authenticated-read"
 )
 
 // Bucket is the bucket representation assembled by Ceph Dashboard. Fields
@@ -54,6 +91,8 @@ const (
 // Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
 //   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwBucket.get)
 //   - src/pybind/mgr/dashboard/frontend/src/app/ceph/rgw/models/rgw-bucket.ts
+//   - src/pybind/mgr/dashboard/frontend/src/app/ceph/rgw/models/rgw-bucket-versioning.ts
+//   - src/pybind/mgr/dashboard/frontend/src/app/ceph/rgw/models/rgw-bucket-mfa-delete.ts
 //   - src/pybind/mgr/dashboard/frontend/src/app/shared/api/rgw-bucket.service.ts
 //   - src/pybind/mgr/dashboard/services/rgw_client.py
 type Bucket struct {
@@ -81,16 +120,16 @@ type Bucket struct {
 	Usage                map[string]BucketUsage  `json:"usage"`
 	Quota                BucketQuota             `json:"bucket_quota"`
 	ReadTracker          int64                   `json:"read_tracker"`
-	Encryption           string                  `json:"encryption"`
-	Versioning           string                  `json:"versioning"`
-	MFADelete            string                  `json:"mfa_delete"`
+	Encryption           BucketEncryptionStatus  `json:"encryption"`
+	Versioning           BucketVersioningState   `json:"versioning"`
+	MFADelete            BucketMFADeleteState    `json:"mfa_delete"`
 	BucketPolicy         json.RawMessage         `json:"bucket_policy"`
 	ACL                  string                  `json:"acl"`
 	Replication          BucketReplication       `json:"replication"`
 	Lifecycle            json.RawMessage         `json:"lifecycle"`
 	LifecycleProgress    json.RawMessage         `json:"lifecycle_progress"`
 	LockEnabled          bool                    `json:"lock_enabled"`
-	LockMode             string                  `json:"lock_mode"`
+	LockMode             LockMode                `json:"lock_mode"`
 	LockRetentionDays    *int64                  `json:"lock_retention_period_days"`
 	LockRetentionYears   *int64                  `json:"lock_retention_period_years"`
 }
@@ -209,9 +248,9 @@ type UpdateBucketRequest struct {
 
 	VersioningState    BucketVersioningState
 	EncryptionEnabled  bool
-	EncryptionType     string
+	EncryptionType     BucketEncryptionType
 	KeyID              string
-	MFADelete          string
+	MFADelete          BucketMFADeleteState
 	MFATokenSerial     string
 	MFATokenPIN        string
 	LockMode           LockMode
@@ -219,7 +258,7 @@ type UpdateBucketRequest struct {
 	LockRetentionYears *int64
 	Tags               string
 	BucketPolicy       string
-	CannedACL          string
+	CannedACL          BucketCannedACL
 	ReplicationEnabled *bool
 	Lifecycle          string
 	DaemonName         string
@@ -253,9 +292,9 @@ func (client *Client) UpdateBucket(ctx context.Context, input UpdateBucketReques
 		"encryption_state": {strconv.FormatBool(input.EncryptionEnabled)},
 	}
 	setOptional(query, "versioning_state", string(input.VersioningState))
-	setOptional(query, "encryption_type", input.EncryptionType)
+	setOptional(query, "encryption_type", string(input.EncryptionType))
 	setOptional(query, "key_id", input.KeyID)
-	setOptional(query, "mfa_delete", input.MFADelete)
+	setOptional(query, "mfa_delete", string(input.MFADelete))
 	setOptional(query, "mfa_token_serial", input.MFATokenSerial)
 	setOptional(query, "mfa_token_pin", input.MFATokenPIN)
 	setOptional(query, "lock_mode", string(input.LockMode))
@@ -263,7 +302,7 @@ func (client *Client) UpdateBucket(ctx context.Context, input UpdateBucketReques
 	setOptionalInt(query, "lock_retention_period_years", input.LockRetentionYears)
 	setOptional(query, "tags", input.Tags)
 	setOptional(query, "bucket_policy", input.BucketPolicy)
-	setOptional(query, "canned_acl", input.CannedACL)
+	setOptional(query, "canned_acl", string(input.CannedACL))
 	setOptionalBool(query, "replication", input.ReplicationEnabled)
 	setOptional(query, "lifecycle", input.Lifecycle)
 	setOptional(query, "daemon_name", input.DaemonName)
@@ -325,11 +364,11 @@ type CreateBucketRequest struct {
 	LockRetentionDays  *int64
 	LockRetentionYears *int64
 	EncryptionEnabled  bool
-	EncryptionType     string
+	EncryptionType     BucketEncryptionType
 	KeyID              string
 	Tags               string
 	BucketPolicy       string
-	CannedACL          string
+	CannedACL          BucketCannedACL
 	ReplicationEnabled bool
 	DaemonName         string
 }
@@ -361,11 +400,11 @@ func (client *Client) CreateBucket(ctx context.Context, input CreateBucketReques
 	setOptional(query, "lock_mode", string(input.LockMode))
 	setOptionalInt(query, "lock_retention_period_days", input.LockRetentionDays)
 	setOptionalInt(query, "lock_retention_period_years", input.LockRetentionYears)
-	setOptional(query, "encryption_type", input.EncryptionType)
+	setOptional(query, "encryption_type", string(input.EncryptionType))
 	setOptional(query, "key_id", input.KeyID)
 	setOptional(query, "tags", input.Tags)
 	setOptional(query, "bucket_policy", input.BucketPolicy)
-	setOptional(query, "canned_acl", input.CannedACL)
+	setOptional(query, "canned_acl", string(input.CannedACL))
 	setOptional(query, "daemon_name", input.DaemonName)
 	endpoint.RawQuery = query.Encode()
 

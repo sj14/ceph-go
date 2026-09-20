@@ -10,22 +10,52 @@ import (
 	"strings"
 )
 
+// UserCapabilityType identifies an RGW administrative capability namespace.
+// These values are accepted by Ceph v20.2.4; callers can convert a string to
+// this type for capability namespaces added by other Ceph versions.
+type UserCapabilityType string
+
+const (
+	UserCapabilityTypeUser                UserCapabilityType = "user"
+	UserCapabilityTypeUsers               UserCapabilityType = "users"
+	UserCapabilityTypeBuckets             UserCapabilityType = "buckets"
+	UserCapabilityTypeMetadata            UserCapabilityType = "metadata"
+	UserCapabilityTypeInfo                UserCapabilityType = "info"
+	UserCapabilityTypeUsage               UserCapabilityType = "usage"
+	UserCapabilityTypeZone                UserCapabilityType = "zone"
+	UserCapabilityTypeBILog               UserCapabilityType = "bilog"
+	UserCapabilityTypeMDLog               UserCapabilityType = "mdlog"
+	UserCapabilityTypeDataLog             UserCapabilityType = "datalog"
+	UserCapabilityTypeRoles               UserCapabilityType = "roles"
+	UserCapabilityTypeUserPolicy          UserCapabilityType = "user-policy"
+	UserCapabilityTypeAMZCache            UserCapabilityType = "amz-cache"
+	UserCapabilityTypeOIDCProvider        UserCapabilityType = "oidc-provider"
+	UserCapabilityTypeUserInfoWithoutKeys UserCapabilityType = "user-info-without-keys"
+	UserCapabilityTypeRateLimit           UserCapabilityType = "ratelimit"
+	UserCapabilityTypeAccounts            UserCapabilityType = "accounts"
+)
+
+// UserCapabilityPermission identifies an RGW capability permission. Callers
+// can convert a string to express a permission combination supported by Ceph.
+type UserCapabilityPermission string
+
+const (
+	UserCapabilityPermissionRead  UserCapabilityPermission = "read"
+	UserCapabilityPermissionWrite UserCapabilityPermission = "write"
+	UserCapabilityPermissionAll   UserCapabilityPermission = "*"
+)
+
 // AddUserCapabilityRequest identifies a capability to grant to an RGW user.
 type AddUserCapabilityRequest struct {
 	UID        string
-	Type       string
-	Permission string
+	Type       UserCapabilityType
+	Permission UserCapabilityPermission
 	DaemonName string
 }
 
 // AddUserCapability grants a capability through
 // POST /api/rgw/user/{uid}/capability. Ceph returns all capabilities belonging
 // to the user after the change.
-//
-// Common capability Type values exposed by Ceph Dashboard are "users",
-// "buckets", "metadata", "usage", and "zone". Permission accepts "read",
-// "write", or "*" for both permissions. Ceph's backend supports additional
-// administrative capability types beyond these common examples.
 //
 // Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
 //   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwUser.create_cap)
@@ -41,8 +71,8 @@ func (client *Client) AddUserCapability(ctx context.Context, input AddUserCapabi
 
 	endpoint := client.userResourceEndpoint(input.UID, "capability")
 	query := url.Values{
-		"type": {input.Type},
-		"perm": {input.Permission},
+		"type": {string(input.Type)},
+		"perm": {string(input.Permission)},
 	}
 	setOptional(query, "daemon_name", input.DaemonName)
 	endpoint.RawQuery = query.Encode()
@@ -67,8 +97,8 @@ func (client *Client) AddUserCapability(ctx context.Context, input AddUserCapabi
 // user.
 type DeleteUserCapabilityRequest struct {
 	UID        string
-	Type       string
-	Permission string
+	Type       UserCapabilityType
+	Permission UserCapabilityPermission
 	DaemonName string
 }
 
@@ -81,8 +111,8 @@ func (client *Client) DeleteUserCapability(ctx context.Context, input DeleteUser
 
 	endpoint := client.userResourceEndpoint(input.UID, "capability")
 	query := url.Values{
-		"type": {input.Type},
-		"perm": {input.Permission},
+		"type": {string(input.Type)},
+		"perm": {string(input.Permission)},
 	}
 	setOptional(query, "daemon_name", input.DaemonName)
 	endpoint.RawQuery = query.Encode()
@@ -95,17 +125,18 @@ func (client *Client) DeleteUserCapability(ctx context.Context, input DeleteUser
 	return err
 }
 
-func validateUserCapabilityRequest(ctx context.Context, uid, capabilityType, permission string) error {
+func validateUserCapabilityRequest(ctx context.Context, uid string, capabilityType UserCapabilityType,
+	permission UserCapabilityPermission) error {
 	if ctx == nil {
 		return errors.New("rgw: context must not be nil")
 	}
 	if strings.TrimSpace(uid) == "" {
 		return errors.New("rgw: user UID must not be empty")
 	}
-	if strings.TrimSpace(capabilityType) == "" {
+	if strings.TrimSpace(string(capabilityType)) == "" {
 		return errors.New("rgw: capability type must not be empty")
 	}
-	if strings.TrimSpace(permission) == "" {
+	if strings.TrimSpace(string(permission)) == "" {
 		return errors.New("rgw: capability permission must not be empty")
 	}
 	return nil
