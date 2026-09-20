@@ -24,9 +24,9 @@ not yet implemented. Controller helpers that are not HTTP endpoints are omitted.
 - [ ] Get bucket notifications — `GET /api/rgw/bucket/notification`
 - [ ] Create or update bucket notifications — `PUT /api/rgw/bucket/notification`
 - [ ] Delete bucket notifications — `DELETE /api/rgw/bucket/notification`
-- [ ] Get global bucket rate limits — `GET /api/rgw/bucket/ratelimit`
-- [ ] Get bucket rate limits — `GET /api/rgw/bucket/{uid}/ratelimit`
-- [ ] Update bucket rate limits — `PUT /api/rgw/bucket/{uid}/ratelimit`
+- [x] `GetGlobalBucketRateLimit` — `GET /api/rgw/bucket/ratelimit`
+- [x] `GetBucketRateLimit` — `GET /api/rgw/bucket/{uid}/ratelimit`
+- [x] `UpdateBucketRateLimit` — `PUT /api/rgw/bucket/{uid}/ratelimit`
 - [ ] Get bucket and user counts — `GET /ui-api/rgw/bucket`
 
 ### Status and multisite setup
@@ -76,9 +76,9 @@ not yet implemented. Controller helpers that are not HTTP endpoints are omitted.
 - [x] `UpdateUserQuota` — `PUT /api/rgw/user/{uid}/quota`
 - [x] `CreateSubuser` — `POST /api/rgw/user/{uid}/subuser`
 - [x] `DeleteSubuser` — `DELETE /api/rgw/user/{uid}/subuser/{subuser}`
-- [ ] Get global user rate limits — `GET /api/rgw/user/ratelimit`
-- [ ] Get user rate limits — `GET /api/rgw/user/{uid}/ratelimit`
-- [ ] Update user rate limits — `PUT /api/rgw/user/{uid}/ratelimit`
+- [x] `GetGlobalUserRateLimit` — `GET /api/rgw/user/ratelimit`
+- [x] `GetUserRateLimit` — `GET /api/rgw/user/{uid}/ratelimit`
+- [x] `UpdateUserRateLimit` — `PUT /api/rgw/user/{uid}/ratelimit`
 
 ### Account roles
 
