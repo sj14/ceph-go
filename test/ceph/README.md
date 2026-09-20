@@ -51,7 +51,8 @@ The tests run by default and expect the container to be available. Use
 `go test -short ./...` to run only the fast client unit tests.
 
 They cover cluster-health reports, capacity, FSID, telemetry status and
-snapshots; User Create/Get/List/Update/Delete, capabilities, quotas, rate
+snapshots; read-only pool listing, details, RBD configuration and form
+information; User Create/Get/List/Update/Delete, capabilities, quotas, rate
 limits, subusers, S3 access-key and Swift-key Create/Delete, explicit zero
 values, optional statistics, deletion verification; Bucket
 Create/Get/List/Update/Delete, bucket rate limits; and missing-resource errors.

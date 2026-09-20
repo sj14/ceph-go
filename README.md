@@ -19,6 +19,16 @@ are omitted.
 - [x] `GetTelemetryStatus` — `GET /api/health/get_telemetry_status`
 - [x] `GetHealthSnapshot` — `GET /api/health/snapshot`
 
+### Pools
+
+- [x] `ListPools` — `GET /api/pool`
+- [x] `GetPool` — `GET /api/pool/{pool_name}`
+- [x] `GetPoolConfiguration` — `GET /api/pool/{pool_name}/configuration`
+- [x] `GetPoolInfo` — `GET /ui-api/pool/info`
+- [ ] Create pool — `POST /api/pool`
+- [ ] Update pool — `PUT /api/pool/{pool_name}`
+- [ ] Delete pool — `DELETE /api/pool/{pool_name}`
+
 ### Buckets
 
 - [x] `CreateBucket` — `POST /api/rgw/bucket`
