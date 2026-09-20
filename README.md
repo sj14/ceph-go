@@ -209,9 +209,9 @@ of an existing bucket; bucket creation remains an S3 operation.
 
 ### Usage and gateway information
 
-- [ ] Get gateway information — `GET /admin/info`
-- [ ] Get usage — `GET /admin/usage`
-- [ ] Trim usage — `DELETE /admin/usage`
+- [x] `GetGatewayInfo` — `GET /admin/info`
+- [x] `GetUsage` — `GET /admin/usage`
+- [x] `TrimUsage` — `DELETE /admin/usage`
 
 ### Metadata
 
