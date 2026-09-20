@@ -1,6 +1,7 @@
 # Repository instructions
 
-This repository provides a Go client for Ceph's RGW management endpoints exposed by the Ceph Dashboard API.
+This repository provides a Go client for Ceph Dashboard APIs, focused on RGW
+management and related cluster information.
 
 ## Source of truth
 

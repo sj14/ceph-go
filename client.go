@@ -1,5 +1,5 @@
-// Package rgw provides a Go client for the RGW management endpoints exposed
-// by the Ceph Dashboard API.
+// Package rgw provides a Go client for Ceph Dashboard APIs, focused on RGW
+// management and related cluster information.
 package rgw
 
 import (

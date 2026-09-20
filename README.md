@@ -1,12 +1,23 @@
 # rgw-go
 
-`rgw-go` is a Go client for RGW management through the Ceph Dashboard REST API.
+`rgw-go` is a Go client for Ceph Dashboard REST APIs, focused on RGW
+management and related cluster information.
 
 ## Implementation status
 
-This checklist covers the RGW-related Dashboard controllers in Ceph `v20.2.4`.
-Checked items are available through the public Go client; unchecked items are
-not yet implemented. Controller helpers that are not HTTP endpoints are omitted.
+This checklist covers the currently targeted Dashboard controllers in Ceph
+`v20.2.4`. Checked items are available through the public Go client; unchecked
+items are not yet implemented. Controller helpers that are not HTTP endpoints
+are omitted.
+
+### Cluster health
+
+- [x] `GetFullHealth` — `GET /api/health/full`
+- [x] `GetMinimalHealth` — `GET /api/health/minimal`
+- [x] `GetClusterCapacity` — `GET /api/health/get_cluster_capacity`
+- [x] `GetClusterFSID` — `GET /api/health/get_cluster_fsid`
+- [x] `GetTelemetryStatus` — `GET /api/health/get_telemetry_status`
+- [x] `GetHealthSnapshot` — `GET /api/health/snapshot`
 
 ### Buckets
 
