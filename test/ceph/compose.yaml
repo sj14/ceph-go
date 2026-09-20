@@ -1,5 +1,6 @@
 services:
   ceph:
+    image: ${CEPH_TEST_IMAGE:-rgw-go-ceph-test:local}
     build:
       context: .
       dockerfile: Containerfile
@@ -12,4 +13,3 @@ services:
     tmpfs:
       - /var/lib/ceph
       - /run/ceph
-

@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Go checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run short tests
+        run: go test -short ./...
+
+      - name: Run race detector
+        run: go test -short -race ./...
+
+      - name: Run go vet
+        run: go vet ./...
+
+  integration:
+    name: Ceph integration tests
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CEPH_TEST_IMAGE: ghcr.io/${{ github.repository_owner }}/rgw-go-ceph-test:main
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Start Ceph
+        run: docker compose -f test/ceph/compose.yaml up --no-build --pull always --wait
+
+      - name: Run integration tests
+        run: go test -count=1 -v ./test/ceph/integration/...
+
+      - name: Show Ceph logs
+        if: failure()
+        run: docker compose -f test/ceph/compose.yaml logs --no-color
+
+      - name: Stop Ceph
+        if: always()
+        run: docker compose -f test/ceph/compose.yaml down --volumes

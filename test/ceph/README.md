@@ -74,6 +74,32 @@ Stop and remove the ephemeral cluster with:
 docker compose -f test/ceph/compose.yaml down
 ```
 
+## GitHub Actions
+
+The `Publish Ceph test image` workflow builds this image from `main` only when
+its build inputs change or when it is started manually. It publishes a
+commit-specific candidate to this repository owner's GitHub Container Registry
+package and runs the complete integration suite against its immutable digest.
+Only a successful candidate is promoted to the moving `main` tag.
+
+For the initial setup:
+
+1. Run `Publish Ceph test image` once from the Actions page.
+2. Verify that its integration tests and promotion step succeed.
+3. Re-run an initially failed `CI` workflow now that the `main` image exists.
+
+The repository may remain private. Both workflows authenticate to GHCR with
+their short-lived `GITHUB_TOKEN`; the publisher has `packages: write` and the
+integration job has only `packages: read`. Ensure that the package inherits
+access from this repository if its package settings were changed manually.
+
+The regular `CI` workflow always pulls `rgw-go-ceph-test:main`. It starts
+Compose with `--no-build`, so ordinary CI runs can never rebuild Ceph. The
+moving tag always identifies the newest candidate that completed the real Ceph
+integration suite; no image version or repository variable needs manual
+maintenance. Making the repository and package public later permits
+unauthenticated pulls, although retaining the login step is harmless.
+
 The runtime packages and endpoint contracts use Ceph's latest stable release,
 `v20.2.4`, tag commit `7f793731f1b39eb4f465e960113d2363c311b964`.
 The release RPM normally configures the moving `rpm-tentacle` channel, so the
