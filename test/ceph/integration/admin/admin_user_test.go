@@ -15,22 +15,6 @@ type adminUserFixture struct {
 	deleted bool
 }
 
-func adminIntegrationClient(t *testing.T) *admin.Client {
-	t.Helper()
-	if testing.Short() {
-		t.Skip("skipping Ceph integration test in short mode")
-	}
-	client, err := admin.NewClient(
-		environment("CEPH_RGW_URL", "http://127.0.0.1:8000"),
-		environment("CEPH_ADMIN_RGW_ACCESS_KEY", "RGWGOADMINACCESSKEY"),
-		environment("CEPH_ADMIN_RGW_SECRET_KEY", "rgw-go-admin-secret-key-for-integration-tests"),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return client
-}
-
 func createAdminUserFixture(t *testing.T, client *admin.Client, ctx context.Context) (*adminUserFixture, admin.User) {
 	t.Helper()
 	fixture := &adminUserFixture{

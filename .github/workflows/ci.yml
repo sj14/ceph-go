@@ -65,7 +65,7 @@ jobs:
         run: docker compose -f test/ceph/compose.yaml up --no-build --pull always --wait
 
       - name: Run integration tests
-        run: go test -count=1 -v ./test/ceph/integration/...
+        run: go test -p 1 -count=1 -v ./test/ceph/integration/...
 
       - name: Show Ceph logs
         if: failure()

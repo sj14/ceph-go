@@ -50,12 +50,18 @@ direct RGW Admin Ops API.
   tested safely and reversed reliably. Prefer a
   create/get-or-list/update/delete roundtrip with cleanup for mutable
   resources. Treat this suite as the authoritative runtime contract check.
+- Keep Dashboard integration tests in `test/ceph/integration/dashboard` and
+  direct Admin Ops integration tests in `test/ceph/integration/admin`. Keep
+  shared test infrastructure outside those two directories.
 - Do not duplicate Ceph's API behavior or test suite with synthetic response
   fixtures or mocks of Ceph internals.
 - Use the Go standard library unless an external dependency has a clear benefit.
 - Run `gofmt`, `go test -short ./...`, and `go vet ./...` after changes. When
-  the Ceph container is available, also run `go test ./test/ceph/integration/...`;
-  integration tests use `testing.Short()` as their only skip mechanism.
+  the Ceph container is available, also run
+  `go test -p 1 ./test/ceph/integration/...`; integration tests use
+  `testing.Short()` as their only skip mechanism. The package-level
+  serialization prevents one suite's fixture deletion from racing Ceph's
+  non-atomic user listing in the other suite.
 
 ## CI and Ceph test image
 

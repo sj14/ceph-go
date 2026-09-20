@@ -44,7 +44,7 @@ ephemeral RGW user used by tests is `rgw-go-test`.
 Run the real Dashboard contract tests after the container is healthy:
 
 ```sh
-go test -v ./test/ceph/integration
+go test -p 1 -v ./test/ceph/integration/...
 ```
 
 The tests run by default and expect the container to be available. Use
@@ -56,12 +56,15 @@ information; User Create/Get/List/Update/Delete, capabilities, quotas, rate
 limits, subusers, S3 access-key and Swift-key Create/Delete, explicit zero
 values, optional statistics, deletion verification; Bucket
 Create/Get/List/Update/Delete, bucket rate limits; and missing-resource errors.
-The suite also exercises direct, SigV4-signed RGW Admin Ops User
-Create/Get/Update/Delete and Bucket List/Get/Link/Unlink/Delete calls against
-the RGW service on port 8000.
+The suite also exercises all direct, SigV4-signed RGW Admin Ops User and
+Bucket endpoints against the RGW service on port 8000. Admin fixtures use S3
+for bucket and object creation because Admin Ops only manages existing
+resources.
 Independent endpoint tests run in parallel and clean up their mutable fixtures.
 `ListUsers` stays serial because Ceph resolves list entries non-atomically and
-can otherwise race with user deletion. In particular, the tests pin Ceph
+can otherwise race with user deletion. Run the two packages with `-p 1` so a
+user deletion in one suite cannot race with user listing in the other. In
+particular, the tests pin Ceph
 Dashboard `v20.2.4`'s observed behavior of wrapping RGW `NoSuchUser` and
 `NoSuchBucket` responses in HTTP 500 errors.
 
@@ -69,7 +72,8 @@ The small `httptest` suite checks shared Go client behavior such as headers,
 error mapping, response limits, and option validation. Endpoint contracts are
 not duplicated with synthetic responses: the opt-in integration suite checks
 them against real Ceph. Its tests are split by controller family in
-`test/ceph/integration/*_test.go`, with one top-level test per endpoint. Mutable
+`test/ceph/integration/dashboard` and `test/ceph/integration/admin`, with one
+top-level test per endpoint. Mutable
 resources use cryptographically random name suffixes and are deleted during
 test cleanup; the whole cluster remains ephemeral.
 

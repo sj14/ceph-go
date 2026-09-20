@@ -3,11 +3,11 @@ package integration
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/sj14/rgw-go/admin"
-	rgw "github.com/sj14/rgw-go/dashboard"
 )
 
 type adminBucketFixture struct {
@@ -19,12 +19,7 @@ type adminBucketFixture struct {
 func createAdminBucketFixture(t *testing.T, adminClient *admin.Client, ctx context.Context) *adminBucketFixture {
 	t.Helper()
 	name := uniqueResourceName(t, "rgw-go-admin-integration-bucket")
-	if err := integrationClient(t).CreateBucket(ctx, rgw.CreateBucketRequest{
-		Name: name,
-		UID:  "rgw-go-test",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	requireS3Success(t, ctx, http.MethodPut, name, nil)
 	fixture := &adminBucketFixture{client: adminClient, name: name}
 	t.Cleanup(func() {
 		if fixture.deleted {
@@ -49,7 +44,7 @@ func TestAdminListBuckets(t *testing.T) {
 	ctx := integrationContext(t)
 	fixture := createAdminBucketFixture(t, client, ctx)
 	buckets, err := client.ListBuckets(ctx, admin.ListBucketsRequest{
-		UID:   "rgw-go-test",
+		UID:   "rgw-go-admin",
 		Stats: new(true),
 	})
 	if err != nil {
@@ -57,7 +52,7 @@ func TestAdminListBuckets(t *testing.T) {
 	}
 	for _, bucket := range buckets {
 		if bucket.Name == fixture.name {
-			if bucket.Owner != "rgw-go-test" || bucket.ID == "" || bucket.IndexType != admin.BucketIndexNormal {
+			if bucket.Owner != "rgw-go-admin" || bucket.ID == "" || bucket.IndexType != admin.BucketIndexNormal {
 				t.Fatalf("listed Admin Ops bucket = %#v", bucket)
 			}
 			return
@@ -76,7 +71,7 @@ func TestAdminGetBucket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bucket.Name != fixture.name || bucket.Owner != "rgw-go-test" || bucket.ID == "" ||
+	if bucket.Name != fixture.name || bucket.Owner != "rgw-go-admin" || bucket.ID == "" ||
 		bucket.Versioning != admin.BucketVersioningOff || bucket.CreationTime.IsZero() {
 		t.Fatalf("Admin Ops bucket = %#v", bucket)
 	}
@@ -112,11 +107,11 @@ func TestAdminUnlinkBucket(t *testing.T) {
 	fixture := createAdminBucketFixture(t, client, ctx)
 	if err := client.UnlinkBucket(ctx, admin.UnlinkBucketRequest{
 		Name: fixture.name,
-		UID:  "rgw-go-test",
+		UID:  "rgw-go-admin",
 	}); err != nil {
 		t.Fatal(err)
 	}
-	buckets, err := client.ListBuckets(ctx, admin.ListBucketsRequest{UID: "rgw-go-test"})
+	buckets, err := client.ListBuckets(ctx, admin.ListBucketsRequest{UID: "rgw-go-admin"})
 	if err != nil {
 		t.Fatal(err)
 	}

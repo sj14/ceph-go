@@ -186,6 +186,19 @@ type GetUserRequest struct {
 	Sync      *bool
 }
 
+// UserList is the paginated response returned by GET /admin/user?list.
+type UserList struct {
+	IDs       []string `json:"keys"`
+	Truncated bool     `json:"truncated"`
+	Count     int64    `json:"count"`
+	Marker    string   `json:"marker,omitempty"`
+}
+
+type ListUsersRequest struct {
+	Marker     string
+	MaxEntries *int64
+}
+
 // CreateUserRequest contains the parameters accepted by PUT /admin/user.
 type CreateUserRequest struct {
 	UID                 string
@@ -238,6 +251,25 @@ type UpdateUserRequest struct {
 type DeleteUserRequest struct {
 	UID       string
 	PurgeData *bool
+}
+
+// ListUsers lists RGW user IDs directly through GET /admin/user?list.
+func (client *Client) ListUsers(ctx context.Context, input ListUsersRequest) (UserList, error) {
+	if ctx == nil {
+		return UserList{}, errors.New("admin: context must not be nil")
+	}
+	query := url.Values{"list": {""}}
+	setString(query, "marker", input.Marker)
+	setInt64(query, "max-entries", input.MaxEntries)
+	body, request, err := client.userRawRequest(ctx, http.MethodGet, query)
+	if err != nil {
+		return UserList{}, err
+	}
+	var users UserList
+	if err := json.Unmarshal(body, &users); err != nil {
+		return UserList{}, fmt.Errorf("admin: decode %s %s response: %w", request.Method, request.URL.Path, err)
+	}
+	return users, nil
 }
 
 // GetUser retrieves a user directly through GET /admin/user.
@@ -345,11 +377,7 @@ func (client *Client) DeleteUser(ctx context.Context, input DeleteUserRequest) e
 }
 
 func (client *Client) userRequest(ctx context.Context, method string, query url.Values) (User, error) {
-	request, err := client.newRequest(ctx, method, "user", query)
-	if err != nil {
-		return User{}, err
-	}
-	body, err := client.do(request)
+	body, request, err := client.userRawRequest(ctx, method, query)
 	if err != nil {
 		return User{}, err
 	}
@@ -358,4 +386,16 @@ func (client *Client) userRequest(ctx context.Context, method string, query url.
 		return User{}, fmt.Errorf("admin: decode %s %s response: %w", method, request.URL.Path, err)
 	}
 	return user, nil
+}
+
+func (client *Client) userRawRequest(ctx context.Context, method string, query url.Values) ([]byte, *http.Request, error) {
+	request, err := client.newRequest(ctx, method, "user", query)
+	if err != nil {
+		return nil, nil, err
+	}
+	body, err := client.do(request)
+	if err != nil {
+		return nil, request, err
+	}
+	return body, request, nil
 }

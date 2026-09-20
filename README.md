@@ -168,33 +168,33 @@ response without Dashboard-specific transformations or enrichment.
 
 ### Users
 
-- [ ] List users — `GET /admin/user?list`
+- [x] `ListUsers` — `GET /admin/user?list`
 - [x] `GetUser` — `GET /admin/user`
-- [ ] Get user quota — `GET /admin/user?quota`
+- [x] `GetUserQuota` — `GET /admin/user?quota`
 - [x] `CreateUser` — `PUT /admin/user`
-- [ ] Create subuser — `PUT /admin/user?subuser`
-- [ ] Create access key — `PUT /admin/user?key`
-- [ ] Add user capability — `PUT /admin/user?caps`
-- [ ] Set user quota — `PUT /admin/user?quota`
+- [x] `CreateSubuser` — `PUT /admin/user?subuser`
+- [x] `CreateKey` — `PUT /admin/user?key`
+- [x] `AddUserCapabilities` — `PUT /admin/user?caps`
+- [x] `SetUserQuota` — `PUT /admin/user?quota`
 - [x] `UpdateUser` — `POST /admin/user`
-- [ ] Update subuser — `POST /admin/user?subuser`
+- [x] `UpdateSubuser` — `POST /admin/user?subuser`
 - [x] `DeleteUser` — `DELETE /admin/user`
-- [ ] Delete subuser — `DELETE /admin/user?subuser`
-- [ ] Delete access key — `DELETE /admin/user?key`
-- [ ] Delete user capability — `DELETE /admin/user?caps`
+- [x] `DeleteSubuser` — `DELETE /admin/user?subuser`
+- [x] `DeleteKey` — `DELETE /admin/user?key`
+- [x] `DeleteUserCapabilities` — `DELETE /admin/user?caps`
 
 ### Buckets
 
 - [x] `ListBuckets` — `GET /admin/bucket`
 - [x] `GetBucket` — `GET /admin/bucket`
-- [ ] Get bucket or object policy — `GET /admin/bucket?policy`
-- [ ] Check or repair bucket index — `GET /admin/bucket?index`
+- [x] `GetBucketPolicy` — `GET /admin/bucket?policy`
+- [x] `CheckBucketIndex` — `GET /admin/bucket?index`
 - [x] `LinkBucket` — `PUT /admin/bucket`
-- [ ] Set bucket quota — `PUT /admin/bucket?quota`
-- [ ] Enable or disable bucket synchronization — `PUT /admin/bucket?sync`
+- [x] `SetBucketQuota` — `PUT /admin/bucket?quota`
+- [x] `SetBucketSync` — `PUT /admin/bucket?sync`
 - [x] `UnlinkBucket` — `POST /admin/bucket`
 - [x] `DeleteBucket` — `DELETE /admin/bucket`
-- [ ] Delete object — `DELETE /admin/bucket?object`
+- [x] `DeleteObject` — `DELETE /admin/bucket?object`
 
 The Admin Ops API does not create buckets. `LinkBucket` changes the owner link
 of an existing bucket; bucket creation remains an S3 operation.
@@ -305,8 +305,9 @@ log.Printf("user %s has display name %s", user.ID, user.DisplayName)
 ```
 
 The RGW credentials need suitable Admin Ops capabilities, such as
-`users=read` for `GetUser` and `users=write` for mutations. The Admin Ops
-resource defaults to `/admin` and can be changed with `admin.WithAdminPath`.
+`users=read` for `GetUser`, `users=write` for user mutations, and the analogous
+`buckets` grants for bucket operations. The Admin Ops resource defaults to
+`/admin` and can be changed with `admin.WithAdminPath`.
 
 ## Integration tests
 
