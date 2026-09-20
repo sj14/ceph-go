@@ -51,7 +51,7 @@ The tests run by default and expect the container to be available. Use
 `go test -short ./...` to run only the fast client unit tests.
 
 They cover User Create/Get/List/Update/Delete, capabilities, quotas, subusers,
-S3 access-key Create/Delete, explicit zero values, optional statistics,
+S3 access-key and Swift-key Create/Delete, explicit zero values, optional statistics,
 deletion verification, Bucket Create/Get/List/Update/Delete, and
 missing-resource errors. Independent endpoint tests run in parallel and clean
 up their mutable fixtures. `ListUsers` stays serial because Ceph resolves list

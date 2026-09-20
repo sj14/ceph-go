@@ -83,6 +83,8 @@ not yet implemented. Controller helpers that are not HTTP endpoints are omitted.
 - [x] `DeleteUserCapability` — `DELETE /api/rgw/user/{uid}/capability`
 - [x] `CreateAccessKey` — `POST /api/rgw/user/{uid}/key`
 - [x] `DeleteAccessKey` — `DELETE /api/rgw/user/{uid}/key`
+- [x] `CreateSwiftKey` — `POST /api/rgw/user/{uid}/key`
+- [x] `DeleteSwiftKey` — `DELETE /api/rgw/user/{uid}/key`
 - [x] `GetUserQuota` — `GET /api/rgw/user/{uid}/quota`
 - [x] `UpdateUserQuota` — `PUT /api/rgw/user/{uid}/quota`
 - [x] `CreateSubuser` — `POST /api/rgw/user/{uid}/subuser`
