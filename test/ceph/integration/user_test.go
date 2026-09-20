@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	rgw "github.com/sj14/rgw-go"
+	rgw "github.com/sj14/rgw-go/dashboard"
 )
 
 type userFixture struct {

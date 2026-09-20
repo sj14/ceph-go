@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	rgw "github.com/sj14/rgw-go"
+	rgw "github.com/sj14/rgw-go/dashboard"
 )
 
 // The manager creates .mgr as its built-in metadata pool. Using it keeps all

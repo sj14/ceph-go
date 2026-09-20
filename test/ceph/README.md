@@ -56,6 +56,9 @@ information; User Create/Get/List/Update/Delete, capabilities, quotas, rate
 limits, subusers, S3 access-key and Swift-key Create/Delete, explicit zero
 values, optional statistics, deletion verification; Bucket
 Create/Get/List/Update/Delete, bucket rate limits; and missing-resource errors.
+The suite also exercises direct, SigV4-signed RGW Admin Ops User
+Create/Get/Update/Delete and Bucket List/Get/Link/Unlink/Delete calls against
+the RGW service on port 8000.
 Independent endpoint tests run in parallel and clean up their mutable fixtures.
 `ListUsers` stays serial because Ceph resolves list entries non-atomically and
 can otherwise race with user deletion. In particular, the tests pin Ceph

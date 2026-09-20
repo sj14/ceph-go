@@ -15,6 +15,9 @@ readonly dashboard_password=${CEPH_DASHBOARD_PASSWORD:-admin}
 readonly dashboard_port=${CEPH_DASHBOARD_PORT:-8443}
 readonly rgw_port=${CEPH_RGW_PORT:-8000}
 readonly test_rgw_user=${CEPH_TEST_RGW_USER:-rgw-go-test}
+readonly admin_rgw_user=${CEPH_ADMIN_RGW_USER:-rgw-go-admin}
+readonly admin_rgw_access_key=${CEPH_ADMIN_RGW_ACCESS_KEY:-RGWGOADMINACCESSKEY}
+readonly admin_rgw_secret_key=${CEPH_ADMIN_RGW_SECRET_KEY:-rgw-go-admin-secret-key-for-integration-tests}
 
 declare -a daemon_pids=()
 
@@ -157,6 +160,15 @@ wait_for_rgw
 if ! radosgw-admin user info --uid "$test_rgw_user" >/dev/null 2>&1; then
   radosgw-admin user create --uid "$test_rgw_user" --display-name 'rgw-go test user' >/dev/null
 fi
+if ! radosgw-admin user info --uid "$admin_rgw_user" >/dev/null 2>&1; then
+  radosgw-admin user create \
+    --uid "$admin_rgw_user" \
+    --display-name 'rgw-go Admin Ops test user' \
+    --system \
+    --access-key "$admin_rgw_access_key" \
+    --secret-key "$admin_rgw_secret_key" >/dev/null
+fi
+radosgw-admin caps add --uid "$admin_rgw_user" --caps 'users=*;buckets=*' >/dev/null
 
 log 'Configuring dashboard'
 ceph config set mgr mgr/dashboard/ssl false

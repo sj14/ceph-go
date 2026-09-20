@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	rgw "github.com/sj14/rgw-go"
+	rgw "github.com/sj14/rgw-go/dashboard"
 )
 
 func TestGetGlobalUserRateLimit(t *testing.T) {

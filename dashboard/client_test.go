@@ -1,4 +1,4 @@
-package rgw
+package dashboard
 
 import (
 	"errors"

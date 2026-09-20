@@ -1,4 +1,4 @@
-package rgw
+package dashboard
 
 // StorageStats contains RGW object and byte usage counters. Ceph uses this
 // model both for aggregate user statistics and for each bucket usage category.

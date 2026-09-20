@@ -1,6 +1,6 @@
-// Package rgw provides a Go client for Ceph Dashboard APIs, focused on RGW
+// Package dashboard provides a Go client for Ceph Dashboard APIs, focused on RGW
 // management and related cluster information.
-package rgw
+package dashboard
 
 import (
 	"errors"
@@ -81,7 +81,7 @@ func NewClient(baseURL string, options ...Option) (*Client, error) {
 	client := &Client{
 		baseURL:    parsedURL,
 		httpClient: http.DefaultClient,
-		userAgent:  "rgw-go",
+		userAgent:  "rgw-go/dashboard",
 	}
 	for _, option := range options {
 		if option == nil {

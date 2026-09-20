@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	rgw "github.com/sj14/rgw-go"
+	rgw "github.com/sj14/rgw-go/dashboard"
 )
 
 const mediaType = "application/vnd.ceph.api.v1.0+json"
