@@ -39,7 +39,11 @@ docker compose -f test/ceph/compose.yaml up --build --wait
 The Dashboard API is available at `http://localhost:8443`; RGW listens at
 `http://localhost:8000`. The default Dashboard credentials are `admin` / `admin`
 and can be overridden through the corresponding environment variables. The
-ephemeral RGW user used by tests is `rgw-go-test`.
+ephemeral RGW user used by tests is `rgw-go-test`. The Admin Ops test user gets
+all capability types supported by Ceph v20.2.4 with wildcard permissions. Ceph
+does not support a wildcard capability type; `CEPH_ADMIN_RGW_CAPS` can override
+the complete semicolon-separated list at container startup without rebuilding
+the image.
 
 Run the real Dashboard contract tests after the container is healthy:
 

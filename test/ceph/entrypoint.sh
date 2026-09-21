@@ -18,6 +18,10 @@ readonly test_rgw_user=${CEPH_TEST_RGW_USER:-rgw-go-test}
 readonly admin_rgw_user=${CEPH_ADMIN_RGW_USER:-rgw-go-admin}
 readonly admin_rgw_access_key=${CEPH_ADMIN_RGW_ACCESS_KEY:-RGWGOADMINACCESSKEY}
 readonly admin_rgw_secret_key=${CEPH_ADMIN_RGW_SECRET_KEY:-rgw-go-admin-secret-key-for-integration-tests}
+# Keep this in sync with RGWUserCaps::is_valid_cap_type() in Ceph v20.2.4's
+# src/rgw/rgw_common.cc. Ceph supports wildcard permissions, but not a wildcard
+# capability type.
+readonly admin_rgw_caps=${CEPH_ADMIN_RGW_CAPS:-'user=*;users=*;buckets=*;metadata=*;info=*;usage=*;zone=*;bilog=*;mdlog=*;datalog=*;roles=*;user-policy=*;amz-cache=*;oidc-provider=*;user-info-without-keys=*;ratelimit=*;accounts=*'}
 
 declare -a daemon_pids=()
 
@@ -168,7 +172,7 @@ if ! radosgw-admin user info --uid "$admin_rgw_user" >/dev/null 2>&1; then
     --access-key "$admin_rgw_access_key" \
     --secret-key "$admin_rgw_secret_key" >/dev/null
 fi
-radosgw-admin caps add --uid "$admin_rgw_user" --caps 'users=*;buckets=*;accounts=*;info=read;usage=*' >/dev/null
+radosgw-admin caps add --uid "$admin_rgw_user" --caps "$admin_rgw_caps" >/dev/null
 
 log 'Configuring dashboard'
 ceph config set mgr mgr/dashboard/ssl false

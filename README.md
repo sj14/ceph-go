@@ -215,25 +215,37 @@ of an existing bucket; bucket creation remains an S3 operation.
 
 ### Metadata
 
-- [ ] List metadata keys — `GET /admin/metadata`
-- [ ] Get metadata — `GET /admin/metadata?key=...`
-- [ ] Get local metadata — `GET /admin/metadata?myself`
+- [x] `ListMetadataKeys` — `GET /admin/metadata[/<section>]`
+- [x] `GetMetadata` — `GET /admin/metadata[/<section>]?key=...`
+- [x] `GetLocalMetadata` — `GET /admin/metadata/<section>?myself`
 - [ ] Write metadata — `PUT /admin/metadata`
 - [ ] Delete metadata — `DELETE /admin/metadata`
 
 ### Logs
 
-- [ ] Get metadata log information, shards, entries, or status —
-  `GET /admin/log?type=metadata`
+- [x] `GetMetadataLogInfo` — `GET /admin/log?type=metadata`
+- [x] `GetMetadataLogShardInfo` —
+  `GET /admin/log?type=metadata&id=...&info`
+- [x] `ListMetadataLogEntries` —
+  `GET /admin/log?type=metadata&id=...`
+- [x] `GetMetadataLogStatus` —
+  `GET /admin/log?type=metadata&status`
 - [ ] Lock, unlock, or notify a metadata log —
   `POST /admin/log?type=metadata`
 - [ ] Delete metadata log entries — `DELETE /admin/log?type=metadata`
-- [ ] Get bucket-index log information, entries, or status —
+- [x] `GetBucketIndexLogInfo` —
+  `GET /admin/log?type=bucket-index&info`
+- [x] `ListBucketIndexLogEntries` —
   `GET /admin/log?type=bucket-index`
+- [x] `GetBucketIndexLogStatus` —
+  `GET /admin/log?type=bucket-index&status`
 - [ ] Delete bucket-index log entries —
   `DELETE /admin/log?type=bucket-index`
-- [ ] Get data log information, shards, entries, or status —
-  `GET /admin/log?type=data`
+- [x] `GetDataLogInfo` — `GET /admin/log?type=data`
+- [x] `GetDataLogShardInfo` —
+  `GET /admin/log?type=data&id=...&info`
+- [x] `ListDataLogEntries` — `GET /admin/log?type=data&id=...`
+- [x] `GetDataLogStatus` — `GET /admin/log?type=data&status`
 - [ ] Notify a data log — `POST /admin/log?type=data`
 - [ ] Delete data log entries — `DELETE /admin/log?type=data`
 
