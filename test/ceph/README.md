@@ -106,7 +106,7 @@ their short-lived `GITHUB_TOKEN`; the publisher has `packages: write` and the
 integration job has only `packages: read`. Ensure that the package inherits
 access from this repository if its package settings were changed manually.
 
-The regular `CI` workflow always pulls `ceph-go-ceph-test:main`. It starts
+The regular `CI` workflow always pulls `ceph-go-test:main`. It starts
 Compose with `--no-build`, so ordinary CI runs can never rebuild Ceph. The
 moving tag always identifies the newest candidate that completed the real Ceph
 integration suite; no image version or repository variable needs manual

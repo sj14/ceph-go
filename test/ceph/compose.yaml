@@ -1,6 +1,6 @@
 services:
   ceph:
-    image: ${CEPH_TEST_IMAGE:-ceph-go-ceph-test:local}
+    image: ${CEPH_TEST_IMAGE:-ceph-go-test:local}
     build:
       context: .
       dockerfile: Containerfile

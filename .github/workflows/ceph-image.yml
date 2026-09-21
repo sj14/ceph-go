@@ -20,7 +20,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/ceph-go-ceph-test
+  IMAGE_NAME: ${{ github.repository_owner }}/ceph-go-test
   IMAGE_TAG: main
 
 jobs:
