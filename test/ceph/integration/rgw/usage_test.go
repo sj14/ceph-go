@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sj14/rgw-go/rgw"
+	"github.com/sj14/ceph-go/rgw"
 )
 
 func TestRGWGetUsage(t *testing.T) {
@@ -12,7 +12,7 @@ func TestRGWGetUsage(t *testing.T) {
 
 	client := rgwIntegrationClient(t)
 	ctx := integrationContext(t)
-	uid := uniqueResourceName(t, "rgw-go-admin-integration-usage")
+	uid := uniqueResourceName(t, "ceph-go-admin-integration-usage")
 	usage, err := client.GetUsage(ctx, rgw.GetUsageRequest{
 		UID:         uid,
 		Start:       new(time.Unix(0, 0)),
@@ -34,7 +34,7 @@ func TestRGWTrimUsage(t *testing.T) {
 
 	client := rgwIntegrationClient(t)
 	ctx := integrationContext(t)
-	uid := uniqueResourceName(t, "rgw-go-admin-integration-trim-usage")
+	uid := uniqueResourceName(t, "ceph-go-admin-integration-trim-usage")
 	if err := client.TrimUsage(ctx, rgw.TrimUsageRequest{UID: uid}); err != nil {
 		t.Fatal(err)
 	}

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/sj14/rgw-go/rgw"
+	"github.com/sj14/ceph-go/rgw"
 )
 
 // UserRateLimitConfiguration contains a user's rate limit.

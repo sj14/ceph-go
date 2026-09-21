@@ -1,7 +1,7 @@
 # Repository instructions
 
-This repository provides separate Go clients for Ceph Dashboard APIs and the
-direct RGW Admin Ops API.
+This repository provides Go clients for Ceph APIs. It currently contains
+separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
 
 ## Source of truth
 
@@ -67,7 +67,7 @@ direct RGW Admin Ops API.
 
 - Reference GitHub Actions by their major-version tag so compatible minor and
   patch releases are adopted automatically; do not pin actions to commit hashes.
-- Keep ordinary CI on the prebuilt `rgw-go-ceph-test:main` image and start it
+- Keep ordinary CI on the prebuilt `ceph-go-ceph-test:main` image and start it
   with `docker compose --no-build --pull always`. Do not rebuild Ceph for each
   library change.
 - Build the Ceph image from `main` only when its build inputs change or when the

@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	"github.com/sj14/rgw-go/rgw"
+	"github.com/sj14/ceph-go/rgw"
 )
 
 func TestRGWSetBucketQuota(t *testing.T) {
@@ -13,7 +13,7 @@ func TestRGWSetBucketQuota(t *testing.T) {
 	ctx := integrationContext(t)
 	fixture := createRGWBucketFixture(t, client, ctx)
 	if err := client.SetBucketQuota(ctx, rgw.SetBucketQuotaRequest{
-		UID:        "rgw-go-admin",
+		UID:        "ceph-go-admin",
 		Name:       fixture.name,
 		Enabled:    new(true),
 		MaxSizeKB:  new(int64(64)),

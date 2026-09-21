@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sj14/rgw-go/rgw"
+	"github.com/sj14/ceph-go/rgw"
 )
 
 type rgwBucketFixture struct {
@@ -18,7 +18,7 @@ type rgwBucketFixture struct {
 
 func createRGWBucketFixture(t *testing.T, rgwClient *rgw.Client, ctx context.Context) *rgwBucketFixture {
 	t.Helper()
-	name := uniqueResourceName(t, "rgw-go-admin-integration-bucket")
+	name := uniqueResourceName(t, "ceph-go-admin-integration-bucket")
 	requireS3Success(t, ctx, http.MethodPut, name, nil)
 	fixture := &rgwBucketFixture{client: rgwClient, name: name}
 	t.Cleanup(func() {
@@ -44,7 +44,7 @@ func TestRGWListBuckets(t *testing.T) {
 	ctx := integrationContext(t)
 	fixture := createRGWBucketFixture(t, client, ctx)
 	buckets, err := client.ListBuckets(ctx, rgw.ListBucketsRequest{
-		UID:   "rgw-go-admin",
+		UID:   "ceph-go-admin",
 		Stats: new(true),
 	})
 	if err != nil {
@@ -52,7 +52,7 @@ func TestRGWListBuckets(t *testing.T) {
 	}
 	for _, bucket := range buckets {
 		if bucket.Name == fixture.name {
-			if bucket.Owner != "rgw-go-admin" || bucket.ID == "" || bucket.IndexType != rgw.BucketIndexNormal {
+			if bucket.Owner != "ceph-go-admin" || bucket.ID == "" || bucket.IndexType != rgw.BucketIndexNormal {
 				t.Fatalf("listed Admin Ops bucket = %#v", bucket)
 			}
 			return
@@ -71,7 +71,7 @@ func TestRGWGetBucket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bucket.Name != fixture.name || bucket.Owner != "rgw-go-admin" || bucket.ID == "" ||
+	if bucket.Name != fixture.name || bucket.Owner != "ceph-go-admin" || bucket.ID == "" ||
 		bucket.Versioning != rgw.BucketVersioningOff || bucket.CreationTime.IsZero() {
 		t.Fatalf("Admin Ops bucket = %#v", bucket)
 	}
@@ -107,11 +107,11 @@ func TestRGWUnlinkBucket(t *testing.T) {
 	fixture := createRGWBucketFixture(t, client, ctx)
 	if err := client.UnlinkBucket(ctx, rgw.UnlinkBucketRequest{
 		Name: fixture.name,
-		UID:  "rgw-go-admin",
+		UID:  "ceph-go-admin",
 	}); err != nil {
 		t.Fatal(err)
 	}
-	buckets, err := client.ListBuckets(ctx, rgw.ListBucketsRequest{UID: "rgw-go-admin"})
+	buckets, err := client.ListBuckets(ctx, rgw.ListBucketsRequest{UID: "ceph-go-admin"})
 	if err != nil {
 		t.Fatal(err)
 	}

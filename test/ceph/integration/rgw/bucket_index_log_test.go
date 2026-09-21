@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/sj14/rgw-go/rgw"
+	"github.com/sj14/ceph-go/rgw"
 )
 
 func rgwBucketLogFixture(t *testing.T) (*rgw.Client, string, string) {

@@ -3,8 +3,8 @@ package integration
 import (
 	"testing"
 
-	mgr "github.com/sj14/rgw-go/mgr"
-	"github.com/sj14/rgw-go/rgw"
+	mgr "github.com/sj14/ceph-go/mgr"
+	"github.com/sj14/ceph-go/rgw"
 )
 
 func TestGetGlobalBucketRateLimit(t *testing.T) {

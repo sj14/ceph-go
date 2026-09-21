@@ -18,8 +18,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
-	"github.com/sj14/rgw-go/mgr"
-	"github.com/sj14/rgw-go/rgw"
+	"github.com/sj14/ceph-go/mgr"
+	"github.com/sj14/ceph-go/rgw"
 )
 
 const dashboardMediaType = "application/vnd.ceph.api.v1.0+json"
@@ -30,7 +30,7 @@ func RGWClient(t *testing.T) *rgw.Client {
 	client, err := rgw.NewClient(
 		Environment("CEPH_RGW_URL", "http://127.0.0.1:8000"),
 		Environment("CEPH_ADMIN_RGW_ACCESS_KEY", "RGWGOADMINACCESSKEY"),
-		Environment("CEPH_ADMIN_RGW_SECRET_KEY", "rgw-go-admin-secret-key-for-integration-tests"),
+		Environment("CEPH_ADMIN_RGW_SECRET_KEY", "ceph-go-admin-secret-key-for-integration-tests"),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -91,7 +91,7 @@ func S3Do(ctx context.Context, method, resource string, body []byte) (int, []byt
 	request.Header.Set("X-Amz-Content-Sha256", payloadHash)
 	credentials := aws.Credentials{
 		AccessKeyID:     Environment("CEPH_ADMIN_RGW_ACCESS_KEY", "RGWGOADMINACCESSKEY"),
-		SecretAccessKey: Environment("CEPH_ADMIN_RGW_SECRET_KEY", "rgw-go-admin-secret-key-for-integration-tests"),
+		SecretAccessKey: Environment("CEPH_ADMIN_RGW_SECRET_KEY", "ceph-go-admin-secret-key-for-integration-tests"),
 	}
 	if err := v4.NewSigner().SignHTTP(ctx, credentials, request, payloadHash, "s3", "default", time.Now()); err != nil {
 		return 0, nil, err

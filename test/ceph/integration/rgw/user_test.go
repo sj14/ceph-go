@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sj14/rgw-go/rgw"
+	"github.com/sj14/ceph-go/rgw"
 )
 
 type rgwUserFixture struct {
@@ -19,7 +19,7 @@ func createRGWUserFixture(t *testing.T, client *rgw.Client, ctx context.Context)
 	t.Helper()
 	fixture := &rgwUserFixture{
 		client: client,
-		uid:    uniqueResourceName(t, "rgw-go-admin-integration-user"),
+		uid:    uniqueResourceName(t, "ceph-go-admin-integration-user"),
 	}
 	user, err := client.CreateUser(ctx, rgw.CreateUserRequest{
 		UID:         fixture.uid,

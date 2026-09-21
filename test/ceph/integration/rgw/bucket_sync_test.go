@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	"github.com/sj14/rgw-go/rgw"
+	"github.com/sj14/ceph-go/rgw"
 )
 
 func TestRGWSetBucketSync(t *testing.T) {

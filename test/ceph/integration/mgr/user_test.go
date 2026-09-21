@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	mgr "github.com/sj14/rgw-go/mgr"
+	mgr "github.com/sj14/ceph-go/mgr"
 )
 
 type userFixture struct {
@@ -23,7 +23,7 @@ func createUserFixture(t *testing.T, client *mgr.Client, ctx context.Context) (*
 
 	fixture := &userFixture{
 		client: client,
-		uid:    uniqueResourceName(t, "rgw-go-integration-user"),
+		uid:    uniqueResourceName(t, "ceph-go-integration-user"),
 	}
 	fixture.email = fixture.uid + "@example.invalid"
 	user, err := client.CreateUser(ctx, mgr.CreateUserRequest{

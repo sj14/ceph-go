@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sj14/rgw-go/rgw"
+	"github.com/sj14/ceph-go/rgw"
 )
 
 type rgwAccountFixture struct {
@@ -18,7 +18,7 @@ type rgwAccountFixture struct {
 func createRGWAccountFixture(t *testing.T, client *rgw.Client, ctx context.Context) (*rgwAccountFixture, rgw.Account) {
 	t.Helper()
 	account, err := client.CreateAccount(ctx, rgw.CreateAccountRequest{
-		Name:          uniqueResourceName(t, "rgw-go-admin-integration-account"),
+		Name:          uniqueResourceName(t, "ceph-go-admin-integration-account"),
 		Email:         uniqueResourceName(t, "account") + "@example.invalid",
 		MaxUsers:      new(int64(11)),
 		MaxRoles:      new(int64(12)),

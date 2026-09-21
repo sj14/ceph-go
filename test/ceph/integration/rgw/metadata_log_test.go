@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/sj14/rgw-go/rgw"
+	"github.com/sj14/ceph-go/rgw"
 )
 
 func TestRGWGetMetadataLogInfo(t *testing.T) {

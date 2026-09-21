@@ -18,14 +18,14 @@ func TestClientAddsRequestMetadata(t *testing.T) {
 		if got := request.Header.Get("Authorization"); got != "Bearer secret-token" {
 			t.Errorf("Authorization = %q, want Bearer secret-token", got)
 		}
-		if got := request.Header.Get("User-Agent"); got != "rgw-go-test" {
-			t.Errorf("User-Agent = %q, want rgw-go-test", got)
+		if got := request.Header.Get("User-Agent"); got != "ceph-go-test" {
+			t.Errorf("User-Agent = %q, want ceph-go-test", got)
 		}
 		writer.WriteHeader(http.StatusNoContent)
 	}))
 	defer server.Close()
 
-	client, err := NewClient(server.URL, WithBearerToken("secret-token"), WithUserAgent("rgw-go-test"))
+	client, err := NewClient(server.URL, WithBearerToken("secret-token"), WithUserAgent("ceph-go-test"))
 	if err != nil {
 		t.Fatal(err)
 	}

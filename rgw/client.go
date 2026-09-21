@@ -121,7 +121,7 @@ func NewClient(endpoint, accessKey, secretKey string, options ...Option) (*Clien
 		},
 		adminPath: defaultAdminPath,
 		region:    defaultRegion,
-		userAgent: "rgw-go/rgw",
+		userAgent: "ceph-go/rgw",
 		now:       time.Now,
 	}
 	for _, option := range options {

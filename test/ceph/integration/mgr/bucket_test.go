@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	mgr "github.com/sj14/rgw-go/mgr"
+	mgr "github.com/sj14/ceph-go/mgr"
 )
 
 type bucketFixture struct {
@@ -21,9 +21,9 @@ func createBucketFixture(t *testing.T, client *mgr.Client, ctx context.Context) 
 	t.Helper()
 	fixture := &bucketFixture{
 		client: client,
-		name:   uniqueResourceName(t, "rgw-go-integration-bucket"),
+		name:   uniqueResourceName(t, "ceph-go-integration-bucket"),
 	}
-	if err := client.CreateBucket(ctx, mgr.CreateBucketRequest{Name: fixture.name, UID: "rgw-go-test"}); err != nil {
+	if err := client.CreateBucket(ctx, mgr.CreateBucketRequest{Name: fixture.name, UID: "ceph-go-test"}); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -50,7 +50,7 @@ func TestCreateBucket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bucket.Name != fixture.name || bucket.Owner != "rgw-go-test" {
+	if bucket.Name != fixture.name || bucket.Owner != "ceph-go-test" {
 		t.Fatalf("bucket = %#v", bucket)
 	}
 }
@@ -62,13 +62,13 @@ func TestListBuckets(t *testing.T) {
 	ctx := integrationContext(t)
 	fixture := createBucketFixture(t, client, ctx)
 
-	buckets, err := client.ListBuckets(ctx, mgr.ListBucketsRequest{UID: "rgw-go-test"})
+	buckets, err := client.ListBuckets(ctx, mgr.ListBucketsRequest{UID: "ceph-go-test"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, bucket := range buckets {
 		if bucket.Name == fixture.name {
-			if bucket.Owner != "rgw-go-test" || bucket.ID == "" {
+			if bucket.Owner != "ceph-go-test" || bucket.ID == "" {
 				t.Fatalf("listed bucket = %#v", bucket)
 			}
 			return
@@ -88,11 +88,11 @@ func TestGetBucket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bucket.Name != fixture.name || bucket.Owner != "rgw-go-test" || bucket.ID == "" || bucket.CreationTime == "" {
+	if bucket.Name != fixture.name || bucket.Owner != "ceph-go-test" || bucket.ID == "" || bucket.CreationTime == "" {
 		t.Fatalf("bucket = %#v", bucket)
 	}
 
-	missing := uniqueResourceName(t, "rgw-go-missing-bucket")
+	missing := uniqueResourceName(t, "ceph-go-missing-bucket")
 	_, err = client.GetBucket(ctx, mgr.GetBucketRequest{Name: missing})
 	var apiError *mgr.APIError
 	if !errors.As(err, &apiError) || apiError.StatusCode != http.StatusInternalServerError ||
@@ -115,7 +115,7 @@ func TestUpdateBucket(t *testing.T) {
 	if err := client.UpdateBucket(ctx, mgr.UpdateBucketRequest{
 		Name:              bucketFixture.name,
 		BucketID:          bucket.ID,
-		UID:               "rgw-go-test",
+		UID:               "ceph-go-test",
 		VersioningState:   mgr.BucketVersioningEnabled,
 		EncryptionEnabled: false,
 	}); err != nil {
@@ -126,7 +126,7 @@ func TestUpdateBucket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bucket.Owner != "rgw-go-test" || bucket.Versioning != mgr.BucketVersioningEnabled {
+	if bucket.Owner != "ceph-go-test" || bucket.Versioning != mgr.BucketVersioningEnabled {
 		t.Fatalf("updated bucket = %#v", bucket)
 	}
 }

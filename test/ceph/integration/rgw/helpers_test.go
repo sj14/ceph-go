@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/sj14/rgw-go/rgw"
-	"github.com/sj14/rgw-go/test/ceph/testutil"
+	"github.com/sj14/ceph-go/rgw"
+	"github.com/sj14/ceph-go/test/ceph/testutil"
 )
 
 func rgwIntegrationClient(t *testing.T) *rgw.Client {

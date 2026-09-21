@@ -1,6 +1,6 @@
 # Minimal Ceph integration-test image
 
-This image runs the smallest useful real Ceph stack for testing `rgw-go`:
+This image runs the smallest useful real Ceph stack for testing `ceph-go`:
 
 - one monitor;
 - one manager with the Dashboard module;
@@ -39,7 +39,7 @@ docker compose -f test/ceph/compose.yaml up --build --wait
 The Dashboard API is available at `http://localhost:8443`; RGW listens at
 `http://localhost:8000`. The default Dashboard credentials are `admin` / `admin`
 and can be overridden through the corresponding environment variables. The
-ephemeral RGW user used by tests is `rgw-go-test`. The Admin Ops test user gets
+ephemeral RGW user used by tests is `ceph-go-test`. The Admin Ops test user gets
 all capability types supported by Ceph v20.2.4 with wildcard permissions. Ceph
 does not support a wildcard capability type; `CEPH_ADMIN_RGW_CAPS` can override
 the complete semicolon-separated list at container startup without rebuilding
@@ -106,7 +106,7 @@ their short-lived `GITHUB_TOKEN`; the publisher has `packages: write` and the
 integration job has only `packages: read`. Ensure that the package inherits
 access from this repository if its package settings were changed manually.
 
-The regular `CI` workflow always pulls `rgw-go-ceph-test:main`. It starts
+The regular `CI` workflow always pulls `ceph-go-ceph-test:main`. It starts
 Compose with `--no-build`, so ordinary CI runs can never rebuild Ceph. The
 moving tag always identifies the newest candidate that completed the real Ceph
 integration suite; no image version or repository variable needs manual

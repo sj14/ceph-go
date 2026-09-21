@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	"github.com/sj14/rgw-go/rgw"
+	"github.com/sj14/ceph-go/rgw"
 )
 
 func TestRGWCreateKey(t *testing.T) {
@@ -17,7 +17,7 @@ func TestRGWCreateKey(t *testing.T) {
 		UID:         fixture.uid,
 		KeyType:     rgw.UserKeyTypeS3,
 		AccessKey:   accessKey,
-		SecretKey:   "rgw-go-admin-integration-secret",
+		SecretKey:   "ceph-go-admin-integration-secret",
 		GenerateKey: new(false),
 		Active:      new(true),
 	})
@@ -25,7 +25,7 @@ func TestRGWCreateKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(keys.AccessKeys) != 1 || keys.AccessKeys[0].AccessKey != accessKey ||
-		keys.AccessKeys[0].SecretKey != "rgw-go-admin-integration-secret" || !keys.AccessKeys[0].Active {
+		keys.AccessKeys[0].SecretKey != "ceph-go-admin-integration-secret" || !keys.AccessKeys[0].Active {
 		t.Fatalf("created Admin Ops keys = %#v", keys)
 	}
 }
@@ -39,7 +39,7 @@ func TestRGWDeleteKey(t *testing.T) {
 	accessKey := uniqueResourceName(t, "RGWGOADMINKEY")
 	if _, err := client.CreateKey(ctx, rgw.CreateKeyRequest{
 		UID: fixture.uid, KeyType: rgw.UserKeyTypeS3, AccessKey: accessKey,
-		SecretKey: "rgw-go-admin-integration-secret", GenerateKey: new(false),
+		SecretKey: "ceph-go-admin-integration-secret", GenerateKey: new(false),
 	}); err != nil {
 		t.Fatal(err)
 	}

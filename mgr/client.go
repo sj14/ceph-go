@@ -81,7 +81,7 @@ func NewClient(baseURL string, options ...Option) (*Client, error) {
 	client := &Client{
 		baseURL:    parsedURL,
 		httpClient: http.DefaultClient,
-		userAgent:  "rgw-go/mgr",
+		userAgent:  "ceph-go/mgr",
 	}
 	for _, option := range options {
 		if option == nil {

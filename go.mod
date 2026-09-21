@@ -1,4 +1,4 @@
-module github.com/sj14/rgw-go
+module github.com/sj14/ceph-go
 
 go 1.27
 

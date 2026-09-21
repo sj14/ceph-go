@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	mgr "github.com/sj14/rgw-go/mgr"
+	mgr "github.com/sj14/ceph-go/mgr"
 )
 
 // The manager creates .mgr as its built-in metadata pool. Using it keeps all

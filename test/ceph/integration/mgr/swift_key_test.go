@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	mgr "github.com/sj14/rgw-go/mgr"
+	mgr "github.com/sj14/ceph-go/mgr"
 )
 
 func TestCreateSwiftKey(t *testing.T) {

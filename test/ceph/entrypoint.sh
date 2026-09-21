@@ -14,10 +14,10 @@ readonly dashboard_user=${CEPH_DASHBOARD_USER:-admin}
 readonly dashboard_password=${CEPH_DASHBOARD_PASSWORD:-admin}
 readonly dashboard_port=${CEPH_DASHBOARD_PORT:-8443}
 readonly rgw_port=${CEPH_RGW_PORT:-8000}
-readonly test_rgw_user=${CEPH_TEST_RGW_USER:-rgw-go-test}
-readonly admin_rgw_user=${CEPH_ADMIN_RGW_USER:-rgw-go-admin}
+readonly test_rgw_user=${CEPH_TEST_RGW_USER:-ceph-go-test}
+readonly admin_rgw_user=${CEPH_ADMIN_RGW_USER:-ceph-go-admin}
 readonly admin_rgw_access_key=${CEPH_ADMIN_RGW_ACCESS_KEY:-RGWGOADMINACCESSKEY}
-readonly admin_rgw_secret_key=${CEPH_ADMIN_RGW_SECRET_KEY:-rgw-go-admin-secret-key-for-integration-tests}
+readonly admin_rgw_secret_key=${CEPH_ADMIN_RGW_SECRET_KEY:-ceph-go-admin-secret-key-for-integration-tests}
 # Keep this in sync with RGWUserCaps::is_valid_cap_type() in Ceph v20.2.4's
 # src/rgw/rgw_common.cc. Ceph supports wildcard permissions, but not a wildcard
 # capability type.
@@ -162,12 +162,12 @@ daemon_pids+=("$!")
 wait_for_rgw
 
 if ! radosgw-admin user info --uid "$test_rgw_user" >/dev/null 2>&1; then
-  radosgw-admin user create --uid "$test_rgw_user" --display-name 'rgw-go test user' >/dev/null
+  radosgw-admin user create --uid "$test_rgw_user" --display-name 'ceph-go test user' >/dev/null
 fi
 if ! radosgw-admin user info --uid "$admin_rgw_user" >/dev/null 2>&1; then
   radosgw-admin user create \
     --uid "$admin_rgw_user" \
-    --display-name 'rgw-go Admin Ops test user' \
+    --display-name 'ceph-go Admin Ops test user' \
     --system \
     --access-key "$admin_rgw_access_key" \
     --secret-key "$admin_rgw_secret_key" >/dev/null
