@@ -11,8 +11,8 @@ semantics differ between APIs.
 - [`rgw`](rgw/README.md) calls the RGW Admin Ops API directly and signs requests
   with AWS Signature Version 4.
 
-Each client README contains usage examples and the complete checklist of
-implemented and missing endpoints.
+Each client README contains usage examples and the current endpoint scope and
+implementation checklists.
 
 ## Installation
 
