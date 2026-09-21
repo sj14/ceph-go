@@ -31,10 +31,19 @@ const (
 )
 
 func (client *Client) getLog(ctx context.Context, query url.Values, output any) error {
+	return client.getLogRequest(ctx, query, output, false)
+}
+
+func (client *Client) getLogClosingConnection(ctx context.Context, query url.Values, output any) error {
+	return client.getLogRequest(ctx, query, output, true)
+}
+
+func (client *Client) getLogRequest(ctx context.Context, query url.Values, output any, closeConnection bool) error {
 	request, err := client.newRequest(ctx, http.MethodGet, "log", query)
 	if err != nil {
 		return err
 	}
+	request.Close = closeConnection
 	body, err := client.do(request)
 	if err != nil {
 		return err

@@ -107,16 +107,22 @@ type ListMetadataLogEntriesRequest struct {
 
 // GetMetadataLogInfo retrieves metadata-log information through
 // GET /admin/log?type=metadata.
+//
+// Ceph v20.2.4's RGWOp_MDLog_Info writes its normal JSON output after an error
+// body in single-site deployments. The connection is therefore closed after
+// this request so those extra bytes cannot corrupt a subsequent response.
 func (client *Client) GetMetadataLogInfo(ctx context.Context) (MetadataLogInfo, error) {
 	if ctx == nil {
 		return MetadataLogInfo{}, errors.New("rgw: context must not be nil")
 	}
 	var result MetadataLogInfo
-	err := client.getLog(ctx, url.Values{"type": {"metadata"}}, &result)
+	err := client.getLogClosingConnection(ctx, url.Values{"type": {"metadata"}}, &result)
 	return result, err
 }
 
 // GetMetadataLogShardInfo retrieves one metadata-log shard's information.
+// Ceph v20.2.4's RGWOp_MDLog_ShardInfo has the same malformed error-response
+// behavior as RGWOp_MDLog_Info, so this request also closes its connection.
 func (client *Client) GetMetadataLogShardInfo(ctx context.Context, input GetMetadataLogShardInfoRequest) (MetadataLogShardInfo, error) {
 	if ctx == nil {
 		return MetadataLogShardInfo{}, errors.New("rgw: context must not be nil")
@@ -128,7 +134,7 @@ func (client *Client) GetMetadataLogShardInfo(ctx context.Context, input GetMeta
 	setInt64(query, "id", &input.ShardID)
 	setString(query, "period", input.Period)
 	var result MetadataLogShardInfo
-	err := client.getLog(ctx, query, &result)
+	err := client.getLogClosingConnection(ctx, query, &result)
 	return result, err
 }
 
