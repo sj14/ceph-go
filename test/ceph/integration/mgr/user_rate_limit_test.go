@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	mgr "github.com/sj14/rgw-go/mgr"
+	"github.com/sj14/rgw-go/rgw"
 )
 
 func TestGetGlobalUserRateLimit(t *testing.T) {
@@ -30,7 +31,7 @@ func TestGetUserRateLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if configuration.User != (mgr.RateLimit{}) {
+	if configuration.User != (rgw.RateLimit{}) {
 		t.Fatalf("initial user rate limit = %#v, want zero value", configuration.User)
 	}
 }
@@ -41,7 +42,7 @@ func TestUpdateUserRateLimit(t *testing.T) {
 	client := integrationClient(t)
 	ctx := integrationContext(t)
 	fixture, _ := createUserFixture(t, client, ctx)
-	want := mgr.RateLimit{
+	want := rgw.RateLimit{
 		Enabled:       true,
 		MaxReadOps:    201,
 		MaxWriteOps:   202,

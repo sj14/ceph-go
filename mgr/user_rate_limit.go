@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"strings"
+
+	"github.com/sj14/rgw-go/rgw"
 )
 
 // UserRateLimitConfiguration contains a user's rate limit.
 type UserRateLimitConfiguration struct {
-	User RateLimit `json:"user_ratelimit"`
+	User rgw.RateLimit `json:"user_ratelimit"`
 }
 
 // GetUserRateLimitRequest identifies the RGW user whose rate limit should be
@@ -21,7 +23,7 @@ type GetUserRateLimitRequest struct {
 // Zero limits mean unlimited.
 type UpdateUserRateLimitRequest struct {
 	UID string
-	RateLimit
+	rgw.RateLimit
 }
 
 // GetGlobalUserRateLimit retrieves the global RGW rate-limit configuration

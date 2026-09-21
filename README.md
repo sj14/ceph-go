@@ -259,8 +259,10 @@ of an existing bucket; bucket creation remains an S3 operation.
 
 ### Rate limits
 
-- [ ] Get user, bucket, or global rate limits — `GET /admin/ratelimit`
-- [ ] Set user, bucket, or global rate limits — `PUT /admin/ratelimit`
+- [x] `GetRateLimit` — get user, bucket, or global rate limits through
+  `GET /admin/ratelimit`
+- [x] `SetRateLimit` — set user, bucket, or global rate limits through
+  `POST /admin/ratelimit`
 
 ## MGR client usage
 

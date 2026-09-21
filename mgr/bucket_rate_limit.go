@@ -5,11 +5,13 @@ import (
 	"errors"
 	"net/url"
 	"strings"
+
+	"github.com/sj14/rgw-go/rgw"
 )
 
 // BucketRateLimitConfiguration contains a bucket's rate limit.
 type BucketRateLimitConfiguration struct {
-	Bucket RateLimit `json:"bucket_ratelimit"`
+	Bucket rgw.RateLimit `json:"bucket_ratelimit"`
 }
 
 // GetBucketRateLimitRequest identifies the bucket whose rate limit should be
@@ -22,7 +24,7 @@ type GetBucketRateLimitRequest struct {
 // set. Zero limits mean unlimited.
 type UpdateBucketRateLimitRequest struct {
 	Name string
-	RateLimit
+	rgw.RateLimit
 }
 
 // GetGlobalBucketRateLimit retrieves the global RGW rate-limit configuration

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	mgr "github.com/sj14/rgw-go/mgr"
+	"github.com/sj14/rgw-go/rgw"
 )
 
 func TestGetGlobalBucketRateLimit(t *testing.T) {
@@ -30,7 +31,7 @@ func TestGetBucketRateLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if configuration.Bucket != (mgr.RateLimit{}) {
+	if configuration.Bucket != (rgw.RateLimit{}) {
 		t.Fatalf("initial bucket rate limit = %#v, want zero value", configuration.Bucket)
 	}
 }
@@ -41,7 +42,7 @@ func TestUpdateBucketRateLimit(t *testing.T) {
 	client := integrationClient(t)
 	ctx := integrationContext(t)
 	fixture := createBucketFixture(t, client, ctx)
-	want := mgr.RateLimit{
+	want := rgw.RateLimit{
 		Enabled:       true,
 		MaxReadOps:    101,
 		MaxWriteOps:   102,
