@@ -26,7 +26,8 @@ The credentials need suitable Admin Ops capabilities, such as `users=read` for
 `GetUser`, `users=write` for user mutations, and analogous `buckets` grants for
 bucket operations. The Admin Ops resource defaults to `/admin` and can be
 changed with `rgw.WithAdminPath`. A preconfigured `http.Client` can be supplied
-with `WithHTTPClient`.
+with `WithHTTPClient`; otherwise the client uses a 30-second total request
+timeout.
 
 ## RGW Admin Ops status
 

@@ -11,6 +11,29 @@ import (
 	"time"
 )
 
+func TestClientHTTPClientDefaultsAndOverride(t *testing.T) {
+	t.Parallel()
+
+	client, err := NewClient("https://rgw.example", "access-key", "secret-key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.httpClient.Timeout != defaultHTTPTimeout {
+		t.Fatalf("default HTTP timeout = %s, want %s", client.httpClient.Timeout, defaultHTTPTimeout)
+	}
+
+	customHTTPClient := &http.Client{Timeout: time.Minute}
+	client, err = NewClient(
+		"https://rgw.example", "access-key", "secret-key", WithHTTPClient(customHTTPClient),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.httpClient != customHTTPClient {
+		t.Fatal("WithHTTPClient did not preserve the supplied client")
+	}
+}
+
 func TestClientSignsRequests(t *testing.T) {
 	t.Parallel()
 

@@ -18,11 +18,12 @@ import (
 )
 
 const (
-	defaultAdminPath = "admin"
-	defaultRegion    = "default"
-	serviceName      = "s3"
-	unsignedPayload  = "UNSIGNED-PAYLOAD"
-	maxResponseBody  = 4 << 20
+	defaultAdminPath   = "admin"
+	defaultRegion      = "default"
+	defaultHTTPTimeout = 30 * time.Second
+	serviceName        = "s3"
+	unsignedPayload    = "UNSIGNED-PAYLOAD"
+	maxResponseBody    = 4 << 20
 )
 
 // Client calls the RGW Admin Ops API directly using AWS Signature Version 4.
@@ -41,7 +42,8 @@ type Client struct {
 // Option configures a Client.
 type Option func(*Client) error
 
-// WithHTTPClient configures the HTTP client used for requests.
+// WithHTTPClient configures the HTTP client used for requests. The supplied
+// client replaces the default client, including its 30-second timeout.
 func WithHTTPClient(httpClient *http.Client) Option {
 	return func(client *Client) error {
 		if httpClient == nil {
@@ -89,7 +91,8 @@ func WithUserAgent(userAgent string) Option {
 }
 
 // NewClient constructs a direct RGW Admin Ops client. endpoint is the RGW
-// service URL, not the Ceph Dashboard URL.
+// service URL, not the Ceph Dashboard URL. The default HTTP client has a
+// 30-second total request timeout.
 func NewClient(endpoint, accessKey, secretKey string, options ...Option) (*Client, error) {
 	parsedURL, err := url.Parse(endpoint)
 	if err != nil {
@@ -113,7 +116,7 @@ func NewClient(endpoint, accessKey, secretKey string, options ...Option) (*Clien
 
 	client := &Client{
 		baseURL:    parsedURL,
-		httpClient: http.DefaultClient,
+		httpClient: &http.Client{Timeout: defaultHTTPTimeout},
 		signer:     v4.NewSigner(),
 		credentials: aws.Credentials{
 			AccessKeyID:     accessKey,

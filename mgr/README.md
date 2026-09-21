@@ -32,8 +32,9 @@ if err != nil {
 log.Printf("bucket %s is owned by %s", bucket.Name, bucket.Owner)
 ```
 
-A preconfigured `http.Client` can be supplied with `WithHTTPClient`, for
-example to set timeouts or use a private-CA transport.
+The default HTTP client has a 30-second total request timeout. A preconfigured
+`http.Client` can be supplied with `WithHTTPClient`, for example to choose a
+different timeout or use a private-CA transport.
 
 ## Dashboard API status
 

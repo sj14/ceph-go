@@ -6,7 +6,29 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestClientHTTPClientDefaultsAndOverride(t *testing.T) {
+	t.Parallel()
+
+	client, err := NewClient("https://ceph.example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.httpClient.Timeout != defaultHTTPTimeout {
+		t.Fatalf("default HTTP timeout = %s, want %s", client.httpClient.Timeout, defaultHTTPTimeout)
+	}
+
+	customHTTPClient := &http.Client{Timeout: time.Minute}
+	client, err = NewClient("https://ceph.example", WithHTTPClient(customHTTPClient))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.httpClient != customHTTPClient {
+		t.Fatal("WithHTTPClient did not preserve the supplied client")
+	}
+}
 
 func TestClientAddsRequestMetadata(t *testing.T) {
 	t.Parallel()

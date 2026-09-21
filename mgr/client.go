@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 const (
-	mediaTypeV1_0   = "application/vnd.ceph.api.v1.0+json"
-	mediaTypeV1_1   = "application/vnd.ceph.api.v1.1+json"
-	maxResponseBody = 4 << 20
+	mediaTypeV1_0      = "application/vnd.ceph.api.v1.0+json"
+	mediaTypeV1_1      = "application/vnd.ceph.api.v1.1+json"
+	defaultHTTPTimeout = 30 * time.Second
+	maxResponseBody    = 4 << 20
 )
 
 // Client calls the Ceph Dashboard API.
@@ -42,7 +44,8 @@ func WithBearerToken(token string) Option {
 	}
 }
 
-// WithHTTPClient configures the HTTP client used for requests.
+// WithHTTPClient configures the HTTP client used for requests. The supplied
+// client replaces the default client, including its 30-second timeout.
 func WithHTTPClient(httpClient *http.Client) Option {
 	return func(client *Client) error {
 		if httpClient == nil {
@@ -62,7 +65,8 @@ func WithUserAgent(userAgent string) Option {
 }
 
 // NewClient constructs a client for a Ceph Dashboard base URL. The base URL
-// may include the dashboard's configured path prefix.
+// may include the dashboard's configured path prefix. The default HTTP client
+// has a 30-second total request timeout.
 func NewClient(baseURL string, options ...Option) (*Client, error) {
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
@@ -80,7 +84,7 @@ func NewClient(baseURL string, options ...Option) (*Client, error) {
 
 	client := &Client{
 		baseURL:    parsedURL,
-		httpClient: http.DefaultClient,
+		httpClient: &http.Client{Timeout: defaultHTTPTimeout},
 		userAgent:  "ceph-go/mgr",
 	}
 	for _, option := range options {
