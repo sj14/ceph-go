@@ -76,7 +76,7 @@ The small `httptest` suite checks shared Go client behavior such as headers,
 error mapping, response limits, and option validation. Endpoint contracts are
 not duplicated with synthetic responses: the opt-in integration suite checks
 them against real Ceph. Its tests are split by controller family in
-`test/ceph/integration/dashboard` and `test/ceph/integration/admin`, with one
+`test/ceph/integration/mgr` and `test/ceph/integration/rgw`, with one
 top-level test per endpoint. Mutable
 resources use cryptographically random name suffixes and are deleted during
 test cleanup; the whole cluster remains ephemeral.

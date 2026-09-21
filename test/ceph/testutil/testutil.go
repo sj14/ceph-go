@@ -18,16 +18,16 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
-	"github.com/sj14/rgw-go/admin"
-	"github.com/sj14/rgw-go/dashboard"
+	"github.com/sj14/rgw-go/mgr"
+	"github.com/sj14/rgw-go/rgw"
 )
 
 const dashboardMediaType = "application/vnd.ceph.api.v1.0+json"
 
-func AdminClient(t *testing.T) *admin.Client {
+func RGWClient(t *testing.T) *rgw.Client {
 	t.Helper()
 	skipShort(t)
-	client, err := admin.NewClient(
+	client, err := rgw.NewClient(
 		Environment("CEPH_RGW_URL", "http://127.0.0.1:8000"),
 		Environment("CEPH_ADMIN_RGW_ACCESS_KEY", "RGWGOADMINACCESSKEY"),
 		Environment("CEPH_ADMIN_RGW_SECRET_KEY", "rgw-go-admin-secret-key-for-integration-tests"),
@@ -38,7 +38,7 @@ func AdminClient(t *testing.T) *admin.Client {
 	return client
 }
 
-func DashboardClient(t *testing.T) *dashboard.Client {
+func MGRClient(t *testing.T) *mgr.Client {
 	t.Helper()
 	skipShort(t)
 	baseURL := Environment("CEPH_DASHBOARD_URL", "http://127.0.0.1:8443")
@@ -50,7 +50,7 @@ func DashboardClient(t *testing.T) *dashboard.Client {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := dashboard.NewClient(baseURL, dashboard.WithBearerToken(token))
+	client, err := mgr.NewClient(baseURL, mgr.WithBearerToken(token))
 	if err != nil {
 		t.Fatal(err)
 	}

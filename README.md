@@ -2,8 +2,8 @@
 
 `rgw-go` provides two explicit Go clients:
 
-- `github.com/sj14/rgw-go/dashboard` for Ceph Dashboard APIs;
-- `github.com/sj14/rgw-go/admin` for direct RGW Admin Ops calls signed with
+- `github.com/sj14/rgw-go/mgr` for Ceph Dashboard APIs exposed by Ceph Manager;
+- `github.com/sj14/rgw-go/rgw` for direct RGW Admin Ops calls signed with
   AWS Signature Version 4.
 
 ## Dashboard API status
@@ -262,21 +262,21 @@ of an existing bucket; bucket creation remains an S3 operation.
 - [ ] Get user, bucket, or global rate limits — `GET /admin/ratelimit`
 - [ ] Set user, bucket, or global rate limits — `PUT /admin/ratelimit`
 
-## Dashboard usage
+## MGR client usage
 
-Import `github.com/sj14/rgw-go/dashboard` and construct a client with a
+Import `github.com/sj14/rgw-go/mgr` and construct a client with a
 Dashboard JWT:
 
 ```go
-client, err := dashboard.NewClient(
+client, err := mgr.NewClient(
     "https://ceph-dashboard.example",
-    dashboard.WithBearerToken(os.Getenv("CEPH_DASHBOARD_TOKEN")),
+    mgr.WithBearerToken(os.Getenv("CEPH_DASHBOARD_TOKEN")),
 )
 if err != nil {
     log.Fatal(err)
 }
 
-err = client.CreateBucket(ctx, dashboard.CreateBucketRequest{
+err = client.CreateBucket(ctx, mgr.CreateBucketRequest{
     Name: "backups",
     UID:  "alice",
 })
@@ -284,7 +284,7 @@ if err != nil {
     log.Fatal(err)
 }
 
-bucket, err := client.GetBucket(ctx, dashboard.GetBucketRequest{
+bucket, err := client.GetBucket(ctx, mgr.GetBucketRequest{
     Name: "backups",
 })
 if err != nil {
@@ -295,12 +295,12 @@ log.Printf("bucket %s is owned by %s", bucket.Name, bucket.Owner)
 
 The token is the JWT returned by Ceph Dashboard's `POST /api/auth` endpoint. A preconfigured `http.Client` can be supplied with `WithHTTPClient`, for example to set timeouts or a private-CA transport.
 
-## Admin Ops usage
+## RGW client usage
 
-Import `github.com/sj14/rgw-go/admin` and provide RGW access and secret keys:
+Import `github.com/sj14/rgw-go/rgw` and provide RGW access and secret keys:
 
 ```go
-client, err := admin.NewClient(
+client, err := rgw.NewClient(
     "https://rgw.example",
     os.Getenv("RGW_ACCESS_KEY"),
     os.Getenv("RGW_SECRET_KEY"),
@@ -309,7 +309,7 @@ if err != nil {
     log.Fatal(err)
 }
 
-user, err := client.GetUser(ctx, admin.GetUserRequest{UID: "alice"})
+user, err := client.GetUser(ctx, rgw.GetUserRequest{UID: "alice"})
 if err != nil {
     log.Fatal(err)
 }
@@ -319,7 +319,7 @@ log.Printf("user %s has display name %s", user.ID, user.DisplayName)
 The RGW credentials need suitable Admin Ops capabilities, such as
 `users=read` for `GetUser`, `users=write` for user mutations, and the analogous
 `buckets` grants for bucket operations. The Admin Ops resource defaults to
-`/admin` and can be changed with `admin.WithAdminPath`.
+`/admin` and can be changed with `rgw.WithAdminPath`.
 
 ## Integration tests
 

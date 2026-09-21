@@ -1,0 +1,68 @@
+package integration
+
+import (
+	"testing"
+
+	mgr "github.com/sj14/rgw-go/mgr"
+)
+
+func TestAddUserCapability(t *testing.T) {
+	t.Parallel()
+
+	client := integrationClient(t)
+	ctx := integrationContext(t)
+	fixture, _ := createUserFixture(t, client, ctx)
+
+	capabilities, err := client.AddUserCapability(ctx, mgr.AddUserCapabilityRequest{
+		UID:        fixture.uid,
+		Type:       mgr.UserCapabilityTypeUsage,
+		Permission: mgr.UserCapabilityPermissionRead,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasCapability(capabilities, mgr.UserCapabilityTypeUsage, mgr.UserCapabilityPermissionRead) {
+		t.Fatalf("created capabilities = %#v", capabilities)
+	}
+}
+
+func TestDeleteUserCapability(t *testing.T) {
+	t.Parallel()
+
+	client := integrationClient(t)
+	ctx := integrationContext(t)
+	fixture, _ := createUserFixture(t, client, ctx)
+	request := mgr.AddUserCapabilityRequest{
+		UID:        fixture.uid,
+		Type:       mgr.UserCapabilityTypeUsage,
+		Permission: mgr.UserCapabilityPermissionRead,
+	}
+	if _, err := client.AddUserCapability(ctx, request); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.DeleteUserCapability(ctx, mgr.DeleteUserCapabilityRequest{
+		UID:        request.UID,
+		Type:       request.Type,
+		Permission: request.Permission,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	user, err := client.GetUser(ctx, mgr.GetUserRequest{UID: fixture.uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasCapability(user.Capabilities, request.Type, request.Permission) {
+		t.Fatalf("capabilities after delete = %#v", user.Capabilities)
+	}
+}
+
+func hasCapability(capabilities []mgr.UserCapability, capabilityType mgr.UserCapabilityType,
+	permission mgr.UserCapabilityPermission) bool {
+	for _, capability := range capabilities {
+		if capability.Type == capabilityType && capability.Permission == permission {
+			return true
+		}
+	}
+	return false
+}

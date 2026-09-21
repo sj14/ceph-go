@@ -21,8 +21,8 @@ direct RGW Admin Ops API.
 ## Go implementation
 
 - Keep the public API idiomatic and context-aware.
-- Keep Dashboard and direct Admin Ops transports in the `dashboard` and
-  `admin` packages respectively. Do not silently switch an operation between
+- Keep Dashboard and direct Admin Ops transports in the `mgr` and `rgw`
+  packages respectively. Do not silently switch an operation between
   them: their authentication, authorization, errors, and response semantics
   differ even when Dashboard delegates to Admin Ops internally.
 - Model source-verified finite or well-known wire values as named Go types with
@@ -50,8 +50,8 @@ direct RGW Admin Ops API.
   tested safely and reversed reliably. Prefer a
   create/get-or-list/update/delete roundtrip with cleanup for mutable
   resources. Treat this suite as the authoritative runtime contract check.
-- Keep Dashboard integration tests in `test/ceph/integration/dashboard` and
-  direct Admin Ops integration tests in `test/ceph/integration/admin`. Keep
+- Keep Dashboard integration tests in `test/ceph/integration/mgr` and direct
+  Admin Ops integration tests in `test/ceph/integration/rgw`. Keep
   shared test infrastructure outside those two directories.
 - Do not duplicate Ceph's API behavior or test suite with synthetic response
   fixtures or mocks of Ceph internals.
