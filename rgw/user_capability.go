@@ -15,11 +15,6 @@ type AddUserCapabilitiesRequest struct {
 	Capabilities []Capability
 }
 
-type DeleteUserCapabilitiesRequest struct {
-	UID          string
-	Capabilities []Capability
-}
-
 // AddUserCapabilities adds one or more grants through PUT /admin/user?caps
 // and returns the user's complete capability set.
 func (client *Client) AddUserCapabilities(ctx context.Context, input AddUserCapabilitiesRequest) ([]Capability, error) {
@@ -31,6 +26,11 @@ func (client *Client) AddUserCapabilities(ctx context.Context, input AddUserCapa
 		return nil, err
 	}
 	return client.userCapabilitiesRequest(ctx, http.MethodPut, query)
+}
+
+type DeleteUserCapabilitiesRequest struct {
+	UID          string
+	Capabilities []Capability
 }
 
 // DeleteUserCapabilities removes one or more grants through

@@ -31,21 +31,6 @@ type CreateSubuserRequest struct {
 	GenerateAccessKey *bool
 }
 
-type UpdateSubuserRequest struct {
-	UID            string
-	Subuser        string
-	Access         SubuserAccess
-	KeyType        UserKeyType
-	SecretKey      string
-	GenerateSecret *bool
-}
-
-type DeleteSubuserRequest struct {
-	UID       string
-	Subuser   string
-	PurgeKeys *bool
-}
-
 // CreateSubuser creates a subuser through PUT /admin/user?subuser and returns
 // all subusers belonging to the user.
 func (client *Client) CreateSubuser(ctx context.Context, input CreateSubuserRequest) ([]Subuser, error) {
@@ -68,6 +53,15 @@ func (client *Client) CreateSubuser(ctx context.Context, input CreateSubuserRequ
 	return client.subuserRequest(ctx, http.MethodPut, query)
 }
 
+type UpdateSubuserRequest struct {
+	UID            string
+	Subuser        string
+	Access         SubuserAccess
+	KeyType        UserKeyType
+	SecretKey      string
+	GenerateSecret *bool
+}
+
 // UpdateSubuser modifies a subuser through POST /admin/user?subuser and
 // returns all subusers belonging to the user.
 func (client *Client) UpdateSubuser(ctx context.Context, input UpdateSubuserRequest) ([]Subuser, error) {
@@ -86,6 +80,12 @@ func (client *Client) UpdateSubuser(ctx context.Context, input UpdateSubuserRequ
 	setString(query, "secret-key", input.SecretKey)
 	setBool(query, "generate-secret", input.GenerateSecret)
 	return client.subuserRequest(ctx, http.MethodPost, query)
+}
+
+type DeleteSubuserRequest struct {
+	UID       string
+	Subuser   string
+	PurgeKeys *bool
 }
 
 // DeleteSubuser deletes a subuser through DELETE /admin/user?subuser.

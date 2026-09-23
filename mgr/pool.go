@@ -72,29 +72,6 @@ const (
 	RBDConfigurationSourceImage  RBDConfigurationSource = 2
 )
 
-// ListPoolsRequest controls the optional fields and statistics returned by
-// Ceph. Attributes use the names from Pool's JSON tags. When Attributes is
-// empty, Ceph returns all ordinary pool fields.
-type ListPoolsRequest struct {
-	Attributes []string
-	Stats      bool
-}
-
-// GetPoolRequest identifies a pool and controls its optional response fields.
-// Ceph always returns Name and Configuration even when Attributes filters the
-// ordinary pool fields.
-type GetPoolRequest struct {
-	Name       string
-	Attributes []string
-	Stats      bool
-}
-
-// GetPoolConfigurationRequest identifies the pool whose effective RBD
-// configuration should be returned.
-type GetPoolConfigurationRequest struct {
-	Name string
-}
-
 // PoolStat contains the latest value and calculated rates for one dynamically
 // named pool statistic. Each Rates entry is a timestamp/value pair produced by
 // Ceph's mgr_util.get_time_series_rates.
@@ -328,6 +305,14 @@ type PoolInfo struct {
 	Nodes                         []CrushNode                `json:"nodes"`
 }
 
+// ListPoolsRequest controls the optional fields and statistics returned by
+// Ceph. Attributes use the names from Pool's JSON tags. When Attributes is
+// empty, Ceph returns all ordinary pool fields.
+type ListPoolsRequest struct {
+	Attributes []string
+	Stats      bool
+}
+
 // ListPools retrieves pools through GET /api/pool.
 func (client *Client) ListPools(ctx context.Context, input ListPoolsRequest) ([]Pool, error) {
 	if ctx == nil {
@@ -342,6 +327,15 @@ func (client *Client) ListPools(ctx context.Context, input ListPoolsRequest) ([]
 		return nil, err
 	}
 	return pools, nil
+}
+
+// GetPoolRequest identifies a pool and controls its optional response fields.
+// Ceph always returns Name and Configuration even when Attributes filters the
+// ordinary pool fields.
+type GetPoolRequest struct {
+	Name       string
+	Attributes []string
+	Stats      bool
 }
 
 // GetPool retrieves one pool through GET /api/pool/{pool_name}.
@@ -359,6 +353,12 @@ func (client *Client) GetPool(ctx context.Context, input GetPoolRequest) (Pool, 
 	var pool Pool
 	err := client.getPoolResource(ctx, endpoint, &pool)
 	return pool, err
+}
+
+// GetPoolConfigurationRequest identifies the pool whose effective RBD
+// configuration should be returned.
+type GetPoolConfigurationRequest struct {
+	Name string
 }
 
 // GetPoolConfiguration retrieves a pool's effective RBD configuration through

@@ -30,15 +30,6 @@ type GetUserQuotaRequest struct {
 	Scope QuotaScope
 }
 
-type SetUserQuotaRequest struct {
-	UID        string
-	Scope      QuotaScope
-	MaxObjects *int64
-	MaxSize    *int64
-	MaxSizeKB  *int64
-	Enabled    *bool
-}
-
 // GetUserQuota gets both quotas, or one selected quota, through
 // GET /admin/user?quota. A selected quota is normalized into the matching
 // field of UserQuotas.
@@ -77,6 +68,15 @@ func (client *Client) GetUserQuota(ctx context.Context, input GetUserQuotaReques
 		return UserQuotas{}, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
 	}
 	return quotas, nil
+}
+
+type SetUserQuotaRequest struct {
+	UID        string
+	Scope      QuotaScope
+	MaxObjects *int64
+	MaxSize    *int64
+	MaxSizeKB  *int64
+	Enabled    *bool
 }
 
 // SetUserQuota updates a user or bucket quota through PUT /admin/user?quota.

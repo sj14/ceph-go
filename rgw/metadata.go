@@ -33,12 +33,6 @@ type MetadataKeyList struct {
 	Marker    string   `json:"marker,omitempty"`
 }
 
-type ListMetadataKeysRequest struct {
-	Section    string
-	Marker     string
-	MaxEntries *int64
-}
-
 // Metadata contains the common envelope around section-specific metadata.
 // Data is an object whose fields depend on the requested metadata section.
 type Metadata struct {
@@ -48,13 +42,10 @@ type Metadata struct {
 	Data             map[string]any `json:"data"`
 }
 
-type GetMetadataRequest struct {
-	Section string
-	Key     string
-}
-
-type GetLocalMetadataRequest struct {
-	Section string
+type ListMetadataKeysRequest struct {
+	Section    string
+	Marker     string
+	MaxEntries *int64
 }
 
 // ListMetadataKeys lists metadata sections or keys within a section through
@@ -84,6 +75,11 @@ func (client *Client) ListMetadataKeys(ctx context.Context, input ListMetadataKe
 	return result, nil
 }
 
+type GetMetadataRequest struct {
+	Section string
+	Key     string
+}
+
 // GetMetadata retrieves one metadata object through
 // GET /admin/metadata[/<section>]?key=....
 func (client *Client) GetMetadata(ctx context.Context, input GetMetadataRequest) (Metadata, error) {
@@ -94,6 +90,10 @@ func (client *Client) GetMetadata(ctx context.Context, input GetMetadataRequest)
 		return Metadata{}, errors.New("rgw: metadata key must not be empty")
 	}
 	return client.getMetadata(ctx, input.Section, url.Values{"key": {input.Key}})
+}
+
+type GetLocalMetadataRequest struct {
+	Section string
 }
 
 // GetLocalMetadata retrieves the authenticated administrative user's metadata

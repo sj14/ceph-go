@@ -91,22 +91,6 @@ type GetBucketIndexLogInfoRequest struct {
 	BucketInstance string
 }
 
-type ListBucketIndexLogEntriesRequest struct {
-	Tenant         string
-	Bucket         string
-	BucketInstance string
-	Marker         string
-	MaxEntries     *int64
-	Generation     *int64
-}
-
-type GetBucketIndexLogStatusRequest struct {
-	Bucket       string
-	SourceZone   string
-	SourceBucket string
-	Option       BucketIndexLogStatusOption
-}
-
 // GetBucketIndexLogInfo retrieves bucket-index log information. Ceph v20.2.4
 // unconditionally parses bucket-instance, so it is required even though the
 // handler initially appears to accept bucket alone.
@@ -122,6 +106,15 @@ func (client *Client) GetBucketIndexLogInfo(ctx context.Context, input GetBucket
 	var result BucketIndexLogInfo
 	err := client.getLog(ctx, query, &result)
 	return result, err
+}
+
+type ListBucketIndexLogEntriesRequest struct {
+	Tenant         string
+	Bucket         string
+	BucketInstance string
+	Marker         string
+	MaxEntries     *int64
+	Generation     *int64
 }
 
 // ListBucketIndexLogEntries lists bucket-index log entries using Ceph's
@@ -141,6 +134,13 @@ func (client *Client) ListBucketIndexLogEntries(ctx context.Context, input ListB
 	var result BucketIndexLogEntryList
 	err := client.getLog(ctx, query, &result)
 	return result, err
+}
+
+type GetBucketIndexLogStatusRequest struct {
+	Bucket       string
+	SourceZone   string
+	SourceBucket string
+	Option       BucketIndexLogStatusOption
 }
 
 // GetBucketIndexLogStatus retrieves version 2 bucket synchronization status.

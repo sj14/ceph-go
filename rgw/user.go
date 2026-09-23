@@ -177,15 +177,6 @@ type StorageStats struct {
 	NumObjects     int64 `json:"num_objects"`
 }
 
-// GetUserRequest identifies a user by UID or S3 access key. Stats adds current
-// storage statistics; Sync asks RGW to synchronize them before reading.
-type GetUserRequest struct {
-	UID       string
-	AccessKey string
-	Stats     *bool
-	Sync      *bool
-}
-
 // UserList is the paginated response returned by GET /admin/user?list.
 type UserList struct {
 	IDs       []string `json:"keys"`
@@ -197,6 +188,50 @@ type UserList struct {
 type ListUsersRequest struct {
 	Marker     string
 	MaxEntries *int64
+}
+
+// ListUsers lists RGW user IDs directly through GET /admin/user?list.
+func (client *Client) ListUsers(ctx context.Context, input ListUsersRequest) (UserList, error) {
+	if ctx == nil {
+		return UserList{}, errors.New("rgw: context must not be nil")
+	}
+	query := url.Values{"list": {""}}
+	setString(query, "marker", input.Marker)
+	setInt64(query, "max-entries", input.MaxEntries)
+	body, request, err := client.userRawRequest(ctx, http.MethodGet, query)
+	if err != nil {
+		return UserList{}, err
+	}
+	var users UserList
+	if err := json.Unmarshal(body, &users); err != nil {
+		return UserList{}, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
+	}
+	return users, nil
+}
+
+// GetUserRequest identifies a user by UID or S3 access key. Stats adds current
+// storage statistics; Sync asks RGW to synchronize them before reading.
+type GetUserRequest struct {
+	UID       string
+	AccessKey string
+	Stats     *bool
+	Sync      *bool
+}
+
+// GetUser retrieves a user directly through GET /admin/user.
+func (client *Client) GetUser(ctx context.Context, input GetUserRequest) (User, error) {
+	if ctx == nil {
+		return User{}, errors.New("rgw: context must not be nil")
+	}
+	if strings.TrimSpace(input.UID) == "" && strings.TrimSpace(input.AccessKey) == "" {
+		return User{}, errors.New("rgw: user UID or access key must not be empty")
+	}
+	query := url.Values{}
+	setString(query, "uid", input.UID)
+	setString(query, "access-key", input.AccessKey)
+	setBool(query, "stats", input.Stats)
+	setBool(query, "sync", input.Sync)
+	return client.userRequest(ctx, http.MethodGet, query)
 }
 
 // CreateUserRequest contains the parameters accepted by PUT /admin/user.
@@ -221,71 +256,6 @@ type CreateUserRequest struct {
 	PlacementTags       []string
 	AccountID           string
 	Path                string
-}
-
-// UpdateUserRequest contains the parameters accepted by POST /admin/user.
-// String pointers preserve the distinction between omission and clearing a
-// value where RGW supports it, notably for Email.
-type UpdateUserRequest struct {
-	UID                 string
-	DisplayName         *string
-	Email               *string
-	AccessKey           *string
-	SecretKey           *string
-	KeyType             *UserKeyType
-	GenerateKey         *bool
-	Suspended           *bool
-	MaxBuckets          *int64
-	System              *bool
-	AccountRoot         *bool
-	OperationMask       *string
-	DefaultPlacement    *string
-	DefaultStorageClass *string
-	PlacementTags       []string
-	AccountID           *string
-	Path                *string
-}
-
-// DeleteUserRequest identifies a user and optionally allows RGW to delete all
-// of the user's data before deleting the user.
-type DeleteUserRequest struct {
-	UID       string
-	PurgeData *bool
-}
-
-// ListUsers lists RGW user IDs directly through GET /admin/user?list.
-func (client *Client) ListUsers(ctx context.Context, input ListUsersRequest) (UserList, error) {
-	if ctx == nil {
-		return UserList{}, errors.New("rgw: context must not be nil")
-	}
-	query := url.Values{"list": {""}}
-	setString(query, "marker", input.Marker)
-	setInt64(query, "max-entries", input.MaxEntries)
-	body, request, err := client.userRawRequest(ctx, http.MethodGet, query)
-	if err != nil {
-		return UserList{}, err
-	}
-	var users UserList
-	if err := json.Unmarshal(body, &users); err != nil {
-		return UserList{}, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
-	}
-	return users, nil
-}
-
-// GetUser retrieves a user directly through GET /admin/user.
-func (client *Client) GetUser(ctx context.Context, input GetUserRequest) (User, error) {
-	if ctx == nil {
-		return User{}, errors.New("rgw: context must not be nil")
-	}
-	if strings.TrimSpace(input.UID) == "" && strings.TrimSpace(input.AccessKey) == "" {
-		return User{}, errors.New("rgw: user UID or access key must not be empty")
-	}
-	query := url.Values{}
-	setString(query, "uid", input.UID)
-	setString(query, "access-key", input.AccessKey)
-	setBool(query, "stats", input.Stats)
-	setBool(query, "sync", input.Sync)
-	return client.userRequest(ctx, http.MethodGet, query)
 }
 
 // CreateUser creates a user directly through PUT /admin/user.
@@ -326,6 +296,29 @@ func (client *Client) CreateUser(ctx context.Context, input CreateUserRequest) (
 	return client.userRequest(ctx, http.MethodPut, query)
 }
 
+// UpdateUserRequest contains the parameters accepted by POST /admin/user.
+// String pointers preserve the distinction between omission and clearing a
+// value where RGW supports it, notably for Email.
+type UpdateUserRequest struct {
+	UID                 string
+	DisplayName         *string
+	Email               *string
+	AccessKey           *string
+	SecretKey           *string
+	KeyType             *UserKeyType
+	GenerateKey         *bool
+	Suspended           *bool
+	MaxBuckets          *int64
+	System              *bool
+	AccountRoot         *bool
+	OperationMask       *string
+	DefaultPlacement    *string
+	DefaultStorageClass *string
+	PlacementTags       []string
+	AccountID           *string
+	Path                *string
+}
+
 // UpdateUser modifies a user directly through POST /admin/user.
 func (client *Client) UpdateUser(ctx context.Context, input UpdateUserRequest) (User, error) {
 	if ctx == nil {
@@ -356,6 +349,13 @@ func (client *Client) UpdateUser(ctx context.Context, input UpdateUserRequest) (
 	setStringPointer(query, "account-id", input.AccountID)
 	setStringPointer(query, "path", input.Path)
 	return client.userRequest(ctx, http.MethodPost, query)
+}
+
+// DeleteUserRequest identifies a user and optionally allows RGW to delete all
+// of the user's data before deleting the user.
+type DeleteUserRequest struct {
+	UID       string
+	PurgeData *bool
 }
 
 // DeleteUser deletes a user directly through DELETE /admin/user.

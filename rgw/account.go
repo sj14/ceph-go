@@ -38,6 +38,18 @@ type GetAccountRequest struct {
 	Name   string
 }
 
+// GetAccount retrieves an account directly through GET /admin/account.
+func (client *Client) GetAccount(ctx context.Context, input GetAccountRequest) (Account, error) {
+	if ctx == nil {
+		return Account{}, errors.New("rgw: context must not be nil")
+	}
+	if strings.TrimSpace(input.ID) == "" && strings.TrimSpace(input.Name) == "" {
+		return Account{}, errors.New("rgw: account ID or name must not be empty")
+	}
+	query := accountIdentityQuery(input.ID, input.Tenant, input.Name)
+	return client.accountRequest(ctx, http.MethodGet, query)
+}
+
 // CreateAccountRequest contains the parameters accepted by POST /admin/account.
 // ID is optional; RGW generates an ID when it is omitted.
 type CreateAccountRequest struct {
@@ -50,6 +62,17 @@ type CreateAccountRequest struct {
 	MaxGroups     *int64
 	MaxAccessKeys *int64
 	MaxBuckets    *int64
+}
+
+// CreateAccount creates an account directly through POST /admin/account.
+func (client *Client) CreateAccount(ctx context.Context, input CreateAccountRequest) (Account, error) {
+	if ctx == nil {
+		return Account{}, errors.New("rgw: context must not be nil")
+	}
+	query := accountIdentityQuery(input.ID, input.Tenant, input.Name)
+	setString(query, "email", input.Email)
+	setAccountLimits(query, input.MaxUsers, input.MaxRoles, input.MaxGroups, input.MaxAccessKeys, input.MaxBuckets)
+	return client.accountRequest(ctx, http.MethodPost, query)
 }
 
 // UpdateAccountRequest identifies an account by ID, tenant and name, or email,
@@ -67,47 +90,6 @@ type UpdateAccountRequest struct {
 	MaxBuckets    *int64
 }
 
-// SetAccountQuotaRequest modifies either the aggregate account quota or the
-// per-bucket quota inherited by buckets in the account.
-type SetAccountQuotaRequest struct {
-	ID         string
-	Scope      QuotaScope
-	MaxSize    *int64
-	MaxObjects *int64
-	Enabled    *bool
-}
-
-// DeleteAccountRequest identifies an account by ID or by tenant and name.
-// Ceph v20.2.4 only deletes an empty account through this REST endpoint.
-type DeleteAccountRequest struct {
-	ID     string
-	Tenant string
-	Name   string
-}
-
-// GetAccount retrieves an account directly through GET /admin/account.
-func (client *Client) GetAccount(ctx context.Context, input GetAccountRequest) (Account, error) {
-	if ctx == nil {
-		return Account{}, errors.New("rgw: context must not be nil")
-	}
-	if strings.TrimSpace(input.ID) == "" && strings.TrimSpace(input.Name) == "" {
-		return Account{}, errors.New("rgw: account ID or name must not be empty")
-	}
-	query := accountIdentityQuery(input.ID, input.Tenant, input.Name)
-	return client.accountRequest(ctx, http.MethodGet, query)
-}
-
-// CreateAccount creates an account directly through POST /admin/account.
-func (client *Client) CreateAccount(ctx context.Context, input CreateAccountRequest) (Account, error) {
-	if ctx == nil {
-		return Account{}, errors.New("rgw: context must not be nil")
-	}
-	query := accountIdentityQuery(input.ID, input.Tenant, input.Name)
-	setString(query, "email", input.Email)
-	setAccountLimits(query, input.MaxUsers, input.MaxRoles, input.MaxGroups, input.MaxAccessKeys, input.MaxBuckets)
-	return client.accountRequest(ctx, http.MethodPost, query)
-}
-
 // UpdateAccount modifies an account directly through PUT /admin/account.
 func (client *Client) UpdateAccount(ctx context.Context, input UpdateAccountRequest) (Account, error) {
 	if ctx == nil {
@@ -120,6 +102,16 @@ func (client *Client) UpdateAccount(ctx context.Context, input UpdateAccountRequ
 	setString(query, "email", input.Email)
 	setAccountLimits(query, input.MaxUsers, input.MaxRoles, input.MaxGroups, input.MaxAccessKeys, input.MaxBuckets)
 	return client.accountRequest(ctx, http.MethodPut, query)
+}
+
+// SetAccountQuotaRequest modifies either the aggregate account quota or the
+// per-bucket quota inherited by buckets in the account.
+type SetAccountQuotaRequest struct {
+	ID         string
+	Scope      QuotaScope
+	MaxSize    *int64
+	MaxObjects *int64
+	Enabled    *bool
 }
 
 // SetAccountQuota modifies an account quota directly through
@@ -143,6 +135,14 @@ func (client *Client) SetAccountQuota(ctx context.Context, input SetAccountQuota
 	setInt64(query, "max-objects", input.MaxObjects)
 	setBool(query, "enabled", input.Enabled)
 	return client.accountRequest(ctx, http.MethodPut, query)
+}
+
+// DeleteAccountRequest identifies an account by ID or by tenant and name.
+// Ceph v20.2.4 only deletes an empty account through this REST endpoint.
+type DeleteAccountRequest struct {
+	ID     string
+	Tenant string
+	Name   string
 }
 
 // DeleteAccount deletes an empty account directly through DELETE /admin/account.

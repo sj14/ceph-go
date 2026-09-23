@@ -27,13 +27,6 @@ type CreateKeyRequest struct {
 	Active      *bool
 }
 
-type DeleteKeyRequest struct {
-	UID       string
-	Subuser   string
-	AccessKey string
-	KeyType   UserKeyType
-}
-
 // CreateKey creates an S3 or Swift key through PUT /admin/user?key. KeyType
 // selects the response representation returned by Ceph.
 func (client *Client) CreateKey(ctx context.Context, input CreateKeyRequest) (CreatedKeys, error) {
@@ -70,6 +63,13 @@ func (client *Client) CreateKey(ctx context.Context, input CreateKeyRequest) (Cr
 		return CreatedKeys{}, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
 	}
 	return keys, nil
+}
+
+type DeleteKeyRequest struct {
+	UID       string
+	Subuser   string
+	AccessKey string
+	KeyType   UserKeyType
 }
 
 // DeleteKey deletes an S3 or Swift key through DELETE /admin/user?key.

@@ -13,19 +13,6 @@ type UserRateLimitConfiguration struct {
 	User rgw.RateLimit `json:"user_ratelimit"`
 }
 
-// GetUserRateLimitRequest identifies the RGW user whose rate limit should be
-// read.
-type GetUserRateLimitRequest struct {
-	UID string
-}
-
-// UpdateUserRateLimitRequest contains the user and rate-limit values to set.
-// Zero limits mean unlimited.
-type UpdateUserRateLimitRequest struct {
-	UID string
-	rgw.RateLimit
-}
-
 // GetGlobalUserRateLimit retrieves the global RGW rate-limit configuration
 // through GET /api/rgw/user/ratelimit.
 //
@@ -44,6 +31,12 @@ func (client *Client) GetGlobalUserRateLimit(ctx context.Context) (GlobalRateLim
 	return configuration, err
 }
 
+// GetUserRateLimitRequest identifies the RGW user whose rate limit should be
+// read.
+type GetUserRateLimitRequest struct {
+	UID string
+}
+
 // GetUserRateLimit retrieves a user's rate limit through
 // GET /api/rgw/user/{uid}/ratelimit.
 func (client *Client) GetUserRateLimit(ctx context.Context, input GetUserRateLimitRequest) (UserRateLimitConfiguration, error) {
@@ -57,6 +50,13 @@ func (client *Client) GetUserRateLimit(ctx context.Context, input GetUserRateLim
 	var configuration UserRateLimitConfiguration
 	err := client.getRateLimit(ctx, client.userResourceEndpoint(input.UID, "ratelimit"), &configuration)
 	return configuration, err
+}
+
+// UpdateUserRateLimitRequest contains the user and rate-limit values to set.
+// Zero limits mean unlimited.
+type UpdateUserRateLimitRequest struct {
+	UID string
+	rgw.RateLimit
 }
 
 // UpdateUserRateLimit updates a user's rate limit through

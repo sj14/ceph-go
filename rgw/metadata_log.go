@@ -93,18 +93,6 @@ type MetadataLogSyncMarker struct {
 	RealmEpoch     int64                      `json:"realm_epoch"`
 }
 
-type GetMetadataLogShardInfoRequest struct {
-	ShardID int64
-	Period  string
-}
-
-type ListMetadataLogEntriesRequest struct {
-	ShardID    int64
-	Period     string
-	Marker     string
-	MaxEntries *int64
-}
-
 // GetMetadataLogInfo retrieves metadata-log information through
 // GET /admin/log?type=metadata.
 //
@@ -118,6 +106,11 @@ func (client *Client) GetMetadataLogInfo(ctx context.Context) (MetadataLogInfo, 
 	var result MetadataLogInfo
 	err := client.getLogClosingConnection(ctx, url.Values{"type": {"metadata"}}, &result)
 	return result, err
+}
+
+type GetMetadataLogShardInfoRequest struct {
+	ShardID int64
+	Period  string
 }
 
 // GetMetadataLogShardInfo retrieves one metadata-log shard's information.
@@ -136,6 +129,13 @@ func (client *Client) GetMetadataLogShardInfo(ctx context.Context, input GetMeta
 	var result MetadataLogShardInfo
 	err := client.getLogClosingConnection(ctx, query, &result)
 	return result, err
+}
+
+type ListMetadataLogEntriesRequest struct {
+	ShardID    int64
+	Period     string
+	Marker     string
+	MaxEntries *int64
 }
 
 // ListMetadataLogEntries lists entries from one metadata-log shard.

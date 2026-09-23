@@ -52,19 +52,6 @@ type GetRateLimitRequest struct {
 	Global bool
 }
 
-type SetRateLimitRequest struct {
-	Scope         RateLimitScope
-	UID           string
-	Bucket        string
-	Tenant        string
-	Global        bool
-	MaxReadOps    *int64
-	MaxWriteOps   *int64
-	MaxReadBytes  *int64
-	MaxWriteBytes *int64
-	Enabled       *bool
-}
-
 // GetRateLimit retrieves a user, bucket, or complete global configuration
 // through GET /admin/ratelimit. Global requests return the bucket, user, and
 // anonymous defaults and do not require a scope.
@@ -93,6 +80,19 @@ func (client *Client) GetRateLimit(ctx context.Context, input GetRateLimitReques
 		return RateLimitConfiguration{}, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
 	}
 	return configuration, nil
+}
+
+type SetRateLimitRequest struct {
+	Scope         RateLimitScope
+	UID           string
+	Bucket        string
+	Tenant        string
+	Global        bool
+	MaxReadOps    *int64
+	MaxWriteOps   *int64
+	MaxReadBytes  *int64
+	MaxWriteBytes *int64
+	Enabled       *bool
 }
 
 // SetRateLimit changes a user, bucket, or one global rate-limit scope through

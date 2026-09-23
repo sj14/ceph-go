@@ -14,19 +14,6 @@ type BucketRateLimitConfiguration struct {
 	Bucket rgw.RateLimit `json:"bucket_ratelimit"`
 }
 
-// GetBucketRateLimitRequest identifies the bucket whose rate limit should be
-// read.
-type GetBucketRateLimitRequest struct {
-	Name string
-}
-
-// UpdateBucketRateLimitRequest contains the bucket and rate-limit values to
-// set. Zero limits mean unlimited.
-type UpdateBucketRateLimitRequest struct {
-	Name string
-	rgw.RateLimit
-}
-
 // GetGlobalBucketRateLimit retrieves the global RGW rate-limit configuration
 // through GET /api/rgw/bucket/ratelimit.
 //
@@ -45,6 +32,12 @@ func (client *Client) GetGlobalBucketRateLimit(ctx context.Context) (GlobalRateL
 	return configuration, err
 }
 
+// GetBucketRateLimitRequest identifies the bucket whose rate limit should be
+// read.
+type GetBucketRateLimitRequest struct {
+	Name string
+}
+
 // GetBucketRateLimit retrieves a bucket's rate limit through
 // GET /api/rgw/bucket/{bucket}/ratelimit.
 func (client *Client) GetBucketRateLimit(ctx context.Context, input GetBucketRateLimitRequest) (BucketRateLimitConfiguration, error) {
@@ -58,6 +51,13 @@ func (client *Client) GetBucketRateLimit(ctx context.Context, input GetBucketRat
 	var configuration BucketRateLimitConfiguration
 	err := client.getRateLimit(ctx, client.bucketRateLimitEndpoint(input.Name), &configuration)
 	return configuration, err
+}
+
+// UpdateBucketRateLimitRequest contains the bucket and rate-limit values to
+// set. Zero limits mean unlimited.
+type UpdateBucketRateLimitRequest struct {
+	Name string
+	rgw.RateLimit
 }
 
 // UpdateBucketRateLimit updates a bucket's rate limit through

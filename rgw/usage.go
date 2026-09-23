@@ -83,15 +83,6 @@ type GetUsageRequest struct {
 	Categories  []string
 }
 
-type TrimUsageRequest struct {
-	UID       string
-	Bucket    string
-	Tenant    string
-	Start     *time.Time
-	End       *time.Time
-	RemoveAll *bool
-}
-
 // GetUsage retrieves detailed and aggregate usage through GET /admin/usage.
 func (client *Client) GetUsage(ctx context.Context, input GetUsageRequest) (Usage, error) {
 	if ctx == nil {
@@ -116,6 +107,15 @@ func (client *Client) GetUsage(ctx context.Context, input GetUsageRequest) (Usag
 		return Usage{}, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
 	}
 	return usage, nil
+}
+
+type TrimUsageRequest struct {
+	UID       string
+	Bucket    string
+	Tenant    string
+	Start     *time.Time
+	End       *time.Time
+	RemoveAll *bool
 }
 
 // TrimUsage deletes matching usage records through DELETE /admin/usage. RGW

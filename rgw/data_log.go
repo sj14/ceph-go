@@ -74,21 +74,6 @@ type DataLogSyncMarker struct {
 	Timestamp      string            `json:"timestamp"`
 }
 
-type GetDataLogShardInfoRequest struct {
-	ShardID int64
-}
-
-type ListDataLogEntriesRequest struct {
-	ShardID    int64
-	Marker     string
-	MaxEntries *int64
-	ExtraInfo  *bool
-}
-
-type GetDataLogStatusRequest struct {
-	SourceZone string
-}
-
 // UnmarshalJSON accepts both rgw_data_change and rgw_data_change_log_entry.
 func (entry *DataLogEntry) UnmarshalJSON(data []byte) error {
 	*entry = DataLogEntry{}
@@ -119,6 +104,10 @@ func (client *Client) GetDataLogInfo(ctx context.Context) (DataLogInfo, error) {
 	return result, err
 }
 
+type GetDataLogShardInfoRequest struct {
+	ShardID int64
+}
+
 // GetDataLogShardInfo retrieves one data-log shard's information.
 func (client *Client) GetDataLogShardInfo(ctx context.Context, input GetDataLogShardInfoRequest) (DataLogShardInfo, error) {
 	if ctx == nil {
@@ -132,6 +121,13 @@ func (client *Client) GetDataLogShardInfo(ctx context.Context, input GetDataLogS
 	var result DataLogShardInfo
 	err := client.getLog(ctx, query, &result)
 	return result, err
+}
+
+type ListDataLogEntriesRequest struct {
+	ShardID    int64
+	Marker     string
+	MaxEntries *int64
+	ExtraInfo  *bool
 }
 
 // ListDataLogEntries lists entries from one data-log shard.
@@ -150,6 +146,10 @@ func (client *Client) ListDataLogEntries(ctx context.Context, input ListDataLogE
 	var result DataLogEntryList
 	err := client.getLog(ctx, query, &result)
 	return result, err
+}
+
+type GetDataLogStatusRequest struct {
+	SourceZone string
 }
 
 // GetDataLogStatus retrieves data synchronization status for a source zone.

@@ -19,27 +19,6 @@ const (
 	LockModeCompliance LockMode = "COMPLIANCE"
 )
 
-// GetBucketRequest identifies a bucket and, optionally, the RGW daemon through
-// which Ceph Dashboard should retrieve it.
-type GetBucketRequest struct {
-	Name       string
-	DaemonName string
-}
-
-// ListBucketsRequest filters buckets by owner when UID is set and selects the
-// RGW daemon through which Ceph Dashboard should retrieve them.
-type ListBucketsRequest struct {
-	UID        string
-	DaemonName string
-}
-
-// DeleteBucketRequest identifies an empty bucket to delete and, optionally,
-// the RGW daemon through which Ceph Dashboard should delete it.
-type DeleteBucketRequest struct {
-	Name       string
-	DaemonName string
-}
-
 // BucketVersioningState is an S3 bucket versioning state accepted by Ceph.
 type BucketVersioningState string
 
@@ -157,6 +136,13 @@ type BucketReplication struct {
 	Policy                     json.RawMessage `json:"policy"`
 }
 
+// ListBucketsRequest filters buckets by owner when UID is set and selects the
+// RGW daemon through which Ceph Dashboard should retrieve them.
+type ListBucketsRequest struct {
+	UID        string
+	DaemonName string
+}
+
 // ListBuckets retrieves detailed buckets through GET /api/rgw/bucket using
 // Ceph Dashboard API version 1.1. The method sends stats=true so that its
 // return type is consistently []Bucket rather than Ceph's alternate []string
@@ -193,6 +179,13 @@ func (client *Client) ListBuckets(ctx context.Context, input ListBucketsRequest)
 		return nil, fmt.Errorf("mgr: decode GET %s response: %w", request.URL.Path, err)
 	}
 	return buckets, nil
+}
+
+// GetBucketRequest identifies a bucket and, optionally, the RGW daemon through
+// which Ceph Dashboard should retrieve it.
+type GetBucketRequest struct {
+	Name       string
+	DaemonName string
 }
 
 // GetBucket retrieves a bucket through GET /api/rgw/bucket/{bucket}.
@@ -303,6 +296,13 @@ func (client *Client) UpdateBucket(ctx context.Context, input UpdateBucketReques
 	}
 	_, err = client.do(request)
 	return err
+}
+
+// DeleteBucketRequest identifies an empty bucket to delete and, optionally,
+// the RGW daemon through which Ceph Dashboard should delete it.
+type DeleteBucketRequest struct {
+	Name       string
+	DaemonName string
 }
 
 // DeleteBucket deletes an empty bucket through

@@ -85,32 +85,6 @@ type ListBucketsRequest struct {
 	Stats     *bool
 }
 
-type GetBucketRequest struct {
-	Name string
-	UID  string
-}
-
-type LinkBucketRequest struct {
-	Name      string
-	UID       string
-	AccountID string
-	BucketID  string
-	NewName   string
-}
-
-type UnlinkBucketRequest struct {
-	Name      string
-	UID       string
-	AccountID string
-}
-
-type DeleteBucketRequest struct {
-	Name         string
-	Tenant       string
-	PurgeObjects *bool
-	BypassGC     *bool
-}
-
 // ListBuckets lists all buckets, or buckets belonging to a user or account,
 // directly through GET /admin/bucket.
 func (client *Client) ListBuckets(ctx context.Context, input ListBucketsRequest) ([]Bucket, error) {
@@ -130,6 +104,11 @@ func (client *Client) ListBuckets(ctx context.Context, input ListBucketsRequest)
 		return nil, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
 	}
 	return result, nil
+}
+
+type GetBucketRequest struct {
+	Name string
+	UID  string
 }
 
 // GetBucket retrieves bucket information directly through GET /admin/bucket.
@@ -153,6 +132,14 @@ func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (Bu
 	return bucket, nil
 }
 
+type LinkBucketRequest struct {
+	Name      string
+	UID       string
+	AccountID string
+	BucketID  string
+	NewName   string
+}
+
 // LinkBucket links an existing bucket to a user or account through
 // PUT /admin/bucket. It does not create a bucket.
 func (client *Client) LinkBucket(ctx context.Context, input LinkBucketRequest) error {
@@ -173,6 +160,12 @@ func (client *Client) LinkBucket(ctx context.Context, input LinkBucketRequest) e
 	return client.bucketAction(ctx, http.MethodPut, query)
 }
 
+type UnlinkBucketRequest struct {
+	Name      string
+	UID       string
+	AccountID string
+}
+
 // UnlinkBucket removes a bucket from a user or account's bucket list through
 // POST /admin/bucket. It does not delete the bucket or its objects.
 func (client *Client) UnlinkBucket(ctx context.Context, input UnlinkBucketRequest) error {
@@ -189,6 +182,13 @@ func (client *Client) UnlinkBucket(ctx context.Context, input UnlinkBucketReques
 	setString(query, "uid", input.UID)
 	setString(query, "account-id", input.AccountID)
 	return client.bucketAction(ctx, http.MethodPost, query)
+}
+
+type DeleteBucketRequest struct {
+	Name         string
+	Tenant       string
+	PurgeObjects *bool
+	BypassGC     *bool
 }
 
 // DeleteBucket deletes a bucket directly through DELETE /admin/bucket.
