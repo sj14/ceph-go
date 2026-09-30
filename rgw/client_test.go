@@ -2,7 +2,10 @@ package rgw
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -10,6 +13,45 @@ import (
 	"testing"
 	"time"
 )
+
+func TestClientSignsJSONBody(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		body, err := io.ReadAll(request.Body)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if string(body) != `{"message":"hello"}` || request.ContentLength != int64(len(body)) {
+			t.Errorf("body = %q, content length = %d", body, request.ContentLength)
+		}
+		sum := sha256.Sum256(body)
+		if got := request.Header.Get("X-Amz-Content-Sha256"); got != hex.EncodeToString(sum[:]) {
+			t.Errorf("payload hash = %q", got)
+		}
+		if request.Header.Get("Content-Type") != "application/json" || request.Header.Get("Accept") != "application/json" {
+			t.Errorf("JSON headers = %v", request.Header)
+		}
+		auth := request.Header.Get("Authorization")
+		if !strings.Contains(auth, "content-type") || !strings.Contains(auth, "x-amz-content-sha256") {
+			t.Errorf("JSON payload headers not signed: %q", auth)
+		}
+		writer.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	client, err := NewClient(server.URL, "access-key", "secret-key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := client.newJSONRequest(context.Background(), http.MethodPut, "resource", nil, map[string]string{"message": "hello"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.do(request); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestClientHTTPClientDefaultsAndOverride(t *testing.T) {
 	t.Parallel()

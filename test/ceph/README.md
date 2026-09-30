@@ -64,6 +64,20 @@ The suite also exercises all direct, SigV4-signed RGW Admin Ops User and
 Bucket endpoints against the RGW service on port 8000. Admin fixtures use S3
 for bucket and object creation because Admin Ops only manages existing
 resources.
+Zone configuration and realm listing are also covered. The minimal container
+has no realm, so realm and period reads verify not-found responses; these same
+tests exercise name/ID realm lookup and current/explicit-epoch period lookup
+when run against a realm-enabled cluster.
+Metadata write/delete tests use temporary users and verify changes through
+both metadata and user reads. Metadata locks use unique period names, renew
+and reject competing owners, and unlock during cleanup. Log notifications
+exercise both data formats, including generation-aware `notify2`.
+Bucket-index trimming creates real stop/resync entries on a temporary bucket,
+then verifies their removal and preservation of the S3 object. Empty
+metadata-log trimming verifies Ceph v20.2.4's `500 UnknownError` response.
+Data-log trimming checks the backend's shard boundary, and period push/commit
+check realm-mismatch rejection; successful global log trimming and topology
+changes require an isolated multisite cluster and are not exercised here.
 Independent endpoint tests run in parallel and clean up their mutable fixtures.
 `ListUsers` stays serial because Ceph resolves list entries non-atomically and
 can otherwise race with user deletion. Run the two packages with `-p 1` so a

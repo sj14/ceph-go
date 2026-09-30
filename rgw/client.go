@@ -2,7 +2,10 @@
 package rgw
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -147,6 +150,18 @@ func (client *Client) endpoint(resource string) *url.URL {
 }
 
 func (client *Client) newRequest(ctx context.Context, method, resource string, query url.Values) (*http.Request, error) {
+	return client.newRequestWithBody(ctx, method, resource, query, nil)
+}
+
+func (client *Client) newJSONRequest(ctx context.Context, method, resource string, query url.Values, input any) (*http.Request, error) {
+	body, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("rgw: encode %s %s request: %w", method, resource, err)
+	}
+	return client.newRequestWithBody(ctx, method, resource, query, body)
+}
+
+func (client *Client) newRequestWithBody(ctx context.Context, method, resource string, query url.Values, body []byte) (*http.Request, error) {
 	if ctx == nil {
 		return nil, errors.New("rgw: context must not be nil")
 	}
@@ -157,11 +172,18 @@ func (client *Client) newRequest(ctx context.Context, method, resource string, q
 	query.Set("format", "json")
 	endpoint.RawQuery = query.Encode()
 
-	request, err := http.NewRequestWithContext(ctx, method, endpoint.String(), nil)
+	request, err := http.NewRequestWithContext(ctx, method, endpoint.String(), bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("Accept", "application/json")
+	payloadHash := unsignedPayload
+	if body != nil {
+		sum := sha256.Sum256(body)
+		payloadHash = hex.EncodeToString(sum[:])
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("X-Amz-Content-Sha256", payloadHash)
+	}
 	if client.userAgent != "" {
 		request.Header.Set("User-Agent", client.userAgent)
 	}
@@ -169,7 +191,7 @@ func (client *Client) newRequest(ctx context.Context, method, resource string, q
 		ctx,
 		client.credentials,
 		request,
-		unsignedPayload,
+		payloadHash,
 		serviceName,
 		client.region,
 		client.now(),
@@ -180,18 +202,25 @@ func (client *Client) newRequest(ctx context.Context, method, resource string, q
 }
 
 func (client *Client) do(request *http.Request) ([]byte, error) {
+	body, _, err := client.doWithHeaders(request)
+	return body, err
+}
+
+// doWithHeaders keeps transport metadata internal. Metadata writes decode the
+// meaningful RGWX update headers into a domain result.
+func (client *Client) doWithHeaders(request *http.Request) ([]byte, http.Header, error) {
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("rgw: %s %s: %w", request.Method, request.URL.Path, err)
+		return nil, nil, fmt.Errorf("rgw: %s %s: %w", request.Method, request.URL.Path, err)
 	}
 	defer response.Body.Close()
 
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBody+1))
 	if err != nil {
-		return nil, fmt.Errorf("rgw: read %s %s response: %w", request.Method, request.URL.Path, err)
+		return nil, nil, fmt.Errorf("rgw: read %s %s response: %w", request.Method, request.URL.Path, err)
 	}
 	if len(body) > maxResponseBody {
-		return nil, fmt.Errorf("rgw: %s %s response exceeds %d bytes", request.Method, request.URL.Path, maxResponseBody)
+		return nil, nil, fmt.Errorf("rgw: %s %s response exceeds %d bytes", request.Method, request.URL.Path, maxResponseBody)
 	}
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		apiError := &APIError{
@@ -201,9 +230,9 @@ func (client *Client) do(request *http.Request) ([]byte, error) {
 			Body:       string(body),
 		}
 		_ = json.Unmarshal(body, apiError)
-		return nil, apiError
+		return nil, nil, apiError
 	}
-	return body, nil
+	return body, response.Header, nil
 }
 
 func setString(query url.Values, name, value string) {

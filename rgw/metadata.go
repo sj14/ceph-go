@@ -121,13 +121,9 @@ func (client *Client) getMetadata(ctx context.Context, section string, query url
 }
 
 func (client *Client) metadataRequest(ctx context.Context, section string, query url.Values) ([]byte, *http.Request, error) {
-	section = strings.TrimSpace(section)
-	if section == "." || section == ".." || strings.ContainsAny(section, "/?#") {
-		return nil, nil, errors.New("rgw: metadata section must not be a path segment, query, or fragment")
-	}
-	resource := "metadata"
-	if section != "" {
-		resource += "/" + section
+	resource, err := metadataResource(section)
+	if err != nil {
+		return nil, nil, err
 	}
 	request, err := client.newRequest(ctx, http.MethodGet, resource, query)
 	if err != nil {
@@ -135,4 +131,16 @@ func (client *Client) metadataRequest(ctx context.Context, section string, query
 	}
 	body, err := client.do(request)
 	return body, request, err
+}
+
+func metadataResource(section string) (string, error) {
+	section = strings.TrimSpace(section)
+	if section == "." || section == ".." || strings.ContainsAny(section, "/?#") {
+		return "", errors.New("rgw: metadata section must not be a path segment, query, or fragment")
+	}
+	resource := "metadata"
+	if section != "" {
+		resource += "/" + section
+	}
+	return resource, nil
 }
