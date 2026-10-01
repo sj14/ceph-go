@@ -119,6 +119,15 @@ All source paths below refer to that tag.
   (`RGWUserAdminOp_Key::create`) returns the complete collection of the selected
   key type, and `RGWAccessKeyPool::generate_key` derives the Swift identity from
   the user and subuser. Keep separate typed S3 and Swift methods and requests.
+- Key deletion: `RGWOp_Key_Remove` in that REST source accepts both selectors.
+  `RGWAccessKeyPool::check_op` in `rgw_user.cc` infers Swift when a subuser is
+  supplied without a key type; `check_existing_key` ignores `access-key` for
+  explicit Swift and derives the identity from UID and Subuser. Expose separate
+  S3/Swift deletion requests, fixing the type internally and requiring UID plus
+  AccessKey or Subuser respectively. `RGWUserAdminOpState::set_subuser` allows
+  a qualified subuser to override UID: require an unqualified deletion subuser.
+  Verify missing-target rejection without mutation and preservation of other
+  S3/Swift keys and the subuser in real Ceph integration tests.
 - Subuser updates: `RGWOp_Subuser_Modify` in that REST source always calls
   `set_perm`, even when `access` is omitted. `rgw_str_to_perm` in
   `src/rgw/rgw_common.cc` maps empty access to no permissions, and

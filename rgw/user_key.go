@@ -98,28 +98,56 @@ func (client *Client) createKey(ctx context.Context, uid string, query url.Value
 	return nil
 }
 
-type DeleteKeyRequest struct {
+// DeleteS3KeyRequest identifies one S3 credential belonging to UID.
+type DeleteS3KeyRequest struct {
 	UID       string
-	Subuser   string
 	AccessKey string
-	KeyType   UserKeyType
 }
 
-// DeleteKey deletes an S3 or Swift key through DELETE /admin/user?key.
-func (client *Client) DeleteKey(ctx context.Context, input DeleteKeyRequest) error {
+// DeleteS3Key deletes one S3 credential through
+// DELETE /admin/user?key&key-type=s3. UID and AccessKey are required.
+//
+// Verified against Ceph v20.2.4's src/rgw/driver/rados/rgw_rest_user.cc
+// (RGWOp_Key_Remove) and rgw_user.cc (RGWAccessKeyPool::check_op,
+// check_existing_key, execute_remove, and RGWUserAdminOp_Key::remove).
+func (client *Client) DeleteS3Key(ctx context.Context, input DeleteS3KeyRequest) error {
+	return client.deleteKey(ctx, input.UID, UserKeyTypeS3, "access-key", input.AccessKey)
+}
+
+// DeleteSwiftKeyRequest identifies the Swift credential of a subuser of UID.
+// Subuser is the unqualified name, without a UID prefix.
+type DeleteSwiftKeyRequest struct {
+	UID     string
+	Subuser string
+}
+
+// DeleteSwiftKey deletes one Swift credential through
+// DELETE /admin/user?key&key-type=swift. UID and Subuser are required.
+// The subuser itself and its S3 credentials are preserved.
+func (client *Client) DeleteSwiftKey(ctx context.Context, input DeleteSwiftKeyRequest) error {
+	return client.deleteKey(ctx, input.UID, UserKeyTypeSwift, "subuser", input.Subuser)
+}
+
+func (client *Client) deleteKey(ctx context.Context, uid string, keyType UserKeyType, selector, value string) error {
 	if ctx == nil {
 		return errors.New("rgw: context must not be nil")
 	}
-	if strings.TrimSpace(input.UID) == "" {
+	if strings.TrimSpace(uid) == "" {
 		return errors.New("rgw: user UID must not be empty")
 	}
-	query := url.Values{
-		"key": {""},
-		"uid": {input.UID},
+	if strings.TrimSpace(value) == "" {
+		return fmt.Errorf("rgw: %s must not be empty", selector)
 	}
-	setString(query, "subuser", input.Subuser)
-	setString(query, "access-key", input.AccessKey)
-	setString(query, "key-type", string(input.KeyType))
+	// Ceph's set_subuser interprets a UID prefix as an override of uid.
+	if keyType == UserKeyTypeSwift && strings.Contains(value, ":") {
+		return errors.New("rgw: subuser must be an unqualified name without a UID prefix")
+	}
+	query := url.Values{
+		"key":      {""},
+		"uid":      {uid},
+		"key-type": {string(keyType)},
+		selector:   {value},
+	}
 	_, _, err := client.userRawRequest(ctx, http.MethodDelete, query)
 	return err
 }

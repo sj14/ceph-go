@@ -60,13 +60,19 @@ legacy and generation-aware data-log notification formats.
 - [x] `UpdateSubuser` — `POST /admin/user?subuser`
 - [x] `DeleteUser` — `DELETE /admin/user`
 - [x] `DeleteSubuser` — `DELETE /admin/user?subuser`
-- [x] `DeleteKey` — `DELETE /admin/user?key`
+- [x] `DeleteS3Key` — `DELETE /admin/user?key&key-type=s3`
+- [x] `DeleteSwiftKey` — `DELETE /admin/user?key&key-type=swift`
 - [x] `DeleteUserCapabilities` — `DELETE /admin/user?caps`
 
 `CreateS3Key` and `CreateSwiftKey` use separate requests and fix the key type
 internally. Both return the user's complete collection of that key type after
 creation, including existing keys. Swift creation requires a subuser and has
 no `AccessKey` field because Ceph derives the identity from the user and subuser.
+
+`DeleteS3Key` requires `UID` and `AccessKey`. `DeleteSwiftKey` requires `UID`
+and an unqualified `Subuser` name, such as `reader` rather than `alice:reader`.
+Both fix the key type internally and delete only the selected credential.
+Swift key deletion preserves the subuser and its S3 credentials.
 
 `UpdateSubuser` requires an explicit `Access` on every update, including secret
 rotation. For example, use `Access: new(rgw.SubuserAccessReadWrite)` to retain

@@ -111,8 +111,32 @@ func TestRGWCreateSwiftKey(t *testing.T) {
 	if !reflect.DeepEqual(keys, user.SwiftKeys) {
 		t.Fatalf("creation response = %#v, stored Swift keys = %#v", keys, user.SwiftKeys)
 	}
-	if err := client.DeleteKey(ctx, rgw.DeleteKeyRequest{
-		UID: fixture.uid, Subuser: "swift-two", KeyType: rgw.UserKeyTypeSwift,
+	s3Keys, err := client.CreateS3Key(ctx, rgw.CreateS3KeyRequest{
+		UID: fixture.uid, Subuser: "swift-two",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, input := range []rgw.DeleteSwiftKeyRequest{
+		{UID: fixture.uid}, {Subuser: "swift-two"},
+		{UID: fixture.uid, Subuser: fixture.uid + ":swift-two"},
+	} {
+		err := client.DeleteSwiftKey(ctx, input)
+		var apiErr *rgw.APIError
+		if err == nil || errors.As(err, &apiErr) {
+			t.Fatalf("invalid Swift deletion error = %v, want local validation error", err)
+		}
+	}
+	user, err = client.GetUser(ctx, rgw.GetUserRequest{UID: fixture.uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(user.SwiftKeys, keys) || !reflect.DeepEqual(user.Keys, s3Keys) {
+		t.Fatalf("rejected Swift deletion changed credentials: %#v", user)
+	}
+	subusers := user.Subusers
+	if err := client.DeleteSwiftKey(ctx, rgw.DeleteSwiftKeyRequest{
+		UID: fixture.uid, Subuser: "swift-two",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -123,9 +147,12 @@ func TestRGWCreateSwiftKey(t *testing.T) {
 	if len(user.SwiftKeys) != 1 || user.SwiftKeys[0] != first {
 		t.Fatalf("Swift keys after deletion = %#v", user.SwiftKeys)
 	}
+	if !reflect.DeepEqual(user.Keys, s3Keys) || !reflect.DeepEqual(user.Subusers, subusers) {
+		t.Fatalf("Swift deletion changed S3 credentials or subusers: %#v", user)
+	}
 }
 
-func TestRGWDeleteKey(t *testing.T) {
+func TestRGWDeleteS3Key(t *testing.T) {
 	t.Parallel()
 
 	client := rgwIntegrationClient(t)
@@ -138,17 +165,57 @@ func TestRGWDeleteKey(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := client.DeleteKey(ctx, rgw.DeleteKeyRequest{
-		UID: fixture.uid, KeyType: rgw.UserKeyTypeS3, AccessKey: accessKey,
+	keys, err := client.CreateS3Key(ctx, rgw.CreateS3KeyRequest{UID: fixture.uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.CreateSubuser(ctx, rgw.CreateSubuserRequest{
+		UID: fixture.uid, Subuser: "swift", Access: rgw.SubuserAccessReadWrite,
 	}); err != nil {
 		t.Fatal(err)
+	}
+	swiftKeys, err := client.CreateSwiftKey(ctx, rgw.CreateSwiftKeyRequest{
+		UID: fixture.uid, Subuser: "swift",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, input := range []rgw.DeleteS3KeyRequest{
+		{UID: fixture.uid}, {AccessKey: accessKey},
+	} {
+		err := client.DeleteS3Key(ctx, input)
+		var apiErr *rgw.APIError
+		if err == nil || errors.As(err, &apiErr) {
+			t.Fatalf("incomplete S3 deletion error = %v, want local validation error", err)
+		}
 	}
 	user, err := client.GetUser(ctx, rgw.GetUserRequest{UID: fixture.uid})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(user.Keys) != 0 {
+	if !reflect.DeepEqual(user.Keys, keys) || !reflect.DeepEqual(user.SwiftKeys, swiftKeys) {
+		t.Fatalf("rejected S3 deletion changed credentials: %#v", user)
+	}
+	var remaining rgw.AccessKey
+	for _, key := range keys {
+		if key.AccessKey != accessKey {
+			remaining = key
+		}
+	}
+	if err := client.DeleteS3Key(ctx, rgw.DeleteS3KeyRequest{
+		UID: fixture.uid, AccessKey: accessKey,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	user, err = client.GetUser(ctx, rgw.GetUserRequest{UID: fixture.uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(user.Keys) != 1 || user.Keys[0] != remaining {
 		t.Fatalf("keys after Admin Ops delete = %#v", user.Keys)
+	}
+	if !reflect.DeepEqual(user.SwiftKeys, swiftKeys) {
+		t.Fatalf("S3 deletion changed Swift credentials: %#v", user.SwiftKeys)
 	}
 }
 
