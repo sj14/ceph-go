@@ -63,7 +63,8 @@ legacy and generation-aware data-log notification formats.
 
 ### Buckets
 
-- [x] `ListBuckets` — `GET /admin/bucket`
+- [x] `ListBucketNames` — `GET /admin/bucket?stats=false`, returns `[]string`
+- [x] `ListBuckets` — `GET /admin/bucket?stats=true`, returns `[]Bucket`
 - [x] `GetBucket` — `GET /admin/bucket`
 - [x] `GetBucketPolicy` — `GET /admin/bucket?policy`
 - [x] `CheckBucketIndex` — `GET /admin/bucket?index`
@@ -76,6 +77,11 @@ legacy and generation-aware data-log notification formats.
 
 The Admin Ops API does not create buckets. `LinkBucket` changes the owner link
 of an existing bucket; bucket creation remains an S3 operation.
+
+Both listing methods use `ListBucketsRequest` for owner filters. `ListBuckets`
+always fetches details and statistics; use `ListBucketNames` for the cheaper
+name-only listing. The request has no `Stats` flag, and name-only responses are
+never converted into partially populated `Bucket` values.
 
 ### Accounts
 

@@ -44,8 +44,7 @@ func TestRGWListBuckets(t *testing.T) {
 	ctx := integrationContext(t)
 	fixture := createRGWBucketFixture(t, client, ctx)
 	buckets, err := client.ListBuckets(ctx, rgw.ListBucketsRequest{
-		UID:   "ceph-go-admin",
-		Stats: new(true),
+		UID: "ceph-go-admin",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -59,6 +58,23 @@ func TestRGWListBuckets(t *testing.T) {
 		}
 	}
 	t.Fatalf("created bucket %q is missing from Admin Ops ListBuckets: %#v", fixture.name, buckets)
+}
+
+func TestRGWListBucketNames(t *testing.T) {
+	t.Parallel()
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	fixture := createRGWBucketFixture(t, client, ctx)
+	// Check both global and owner-filtered name-only response paths.
+	for _, input := range []rgw.ListBucketsRequest{{}, {UID: "ceph-go-admin"}} {
+		names, err := client.ListBucketNames(ctx, input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !containsString(names, fixture.name) {
+			t.Errorf("created bucket %q missing from name listing for %#v: %#v", fixture.name, input, names)
+		}
+	}
 }
 
 func TestRGWGetBucket(t *testing.T) {
@@ -111,12 +127,12 @@ func TestRGWUnlinkBucket(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	buckets, err := client.ListBuckets(ctx, rgw.ListBucketsRequest{UID: "ceph-go-admin"})
+	buckets, err := client.ListBucketNames(ctx, rgw.ListBucketsRequest{UID: "ceph-go-admin"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, bucket := range buckets {
-		if bucket.Name == fixture.name {
+		if bucket == fixture.name {
 			t.Fatalf("unlinked bucket %q remains in the owner's bucket list", fixture.name)
 		}
 	}

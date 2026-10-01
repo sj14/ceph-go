@@ -37,6 +37,15 @@ separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
   Ceph source type and wire representation. Name shared models for the Ceph
   domain concept rather than for one endpoint, and do not duplicate identical
   structs merely because they occur in different controller families.
+- Make response shape and data completeness predictable from method names and
+  return types. When a Ceph parameter switches between distinct response forms
+  (for example, bucket names versus detailed buckets), expose separate methods
+  with fixed return types and set that parameter internally. Do not expose a
+  shape-switching flag or normalize a name-only response into a mostly empty
+  resource struct. Reuse shared filters and full domain models where appropriate.
+  Model genuinely optional data explicitly, so missing data cannot be mistaken
+  for a real zero value. Prefer clear, hard-to-misuse APIs over preserving a
+  confusing interface; breaking changes are acceptable when needed for this.
 - Return decoded domain models and errors from endpoint methods. Keep HTTP status, headers, and raw successful response bodies internal unless an endpoint exposes meaningful transport metadata that callers need.
 - Return single resources by value as `(Resource, error)`, collections as `([]Resource, error)`, and actions without a meaningful result as `error`. Use pointers within models only for nullable fields or when absence must be distinguishable from a zero value.
 - Preserve Ceph's actual HTTP method, route, media type, parameter location, parameter names, and response status.

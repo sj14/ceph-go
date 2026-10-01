@@ -38,7 +38,6 @@ const (
 )
 
 // Bucket is the direct JSON representation produced by RGW's bucket_stats().
-// A bucket returned by ListBuckets without Stats has only Name populated.
 //
 // Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
 //   - src/rgw/driver/rados/rgw_rest_bucket.cc
@@ -79,31 +78,51 @@ type BucketExplicitPlacement struct {
 	IndexPool     string `json:"index_pool"`
 }
 
+// ListBucketsRequest filters both bucket-name and detailed bucket listings.
 type ListBucketsRequest struct {
 	UID       string
 	AccountID string
-	Stats     *bool
 }
 
-// ListBuckets lists all buckets, or buckets belonging to a user or account,
-// directly through GET /admin/bucket.
+// ListBuckets lists detailed buckets through GET /admin/bucket?stats=true.
+// Use ListBucketNames when only names are needed to avoid fetching statistics.
 func (client *Client) ListBuckets(ctx context.Context, input ListBucketsRequest) ([]Bucket, error) {
+	body, request, err := client.listBuckets(ctx, input, true)
+	if err != nil {
+		return nil, err
+	}
+	var result []Bucket
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
+	}
+	return result, nil
+}
+
+// ListBucketNames lists bucket names through GET /admin/bucket?stats=false.
+// Both listing methods accept the same owner filters in ListBucketsRequest.
+// Ceph v20.2.4's src/rgw/driver/rados/rgw_rest_bucket.cc selects stats; its
+// rgw_bucket.cc emits strings without stats and bucket_stats objects with stats.
+func (client *Client) ListBucketNames(ctx context.Context, input ListBucketsRequest) ([]string, error) {
+	body, request, err := client.listBuckets(ctx, input, false)
+	if err != nil {
+		return nil, err
+	}
+	var result []string
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
+	}
+	return result, nil
+}
+
+func (client *Client) listBuckets(ctx context.Context, input ListBucketsRequest, stats bool) ([]byte, *http.Request, error) {
 	if ctx == nil {
-		return nil, errors.New("rgw: context must not be nil")
+		return nil, nil, errors.New("rgw: context must not be nil")
 	}
 	query := url.Values{}
 	setString(query, "uid", input.UID)
 	setString(query, "account-id", input.AccountID)
-	setBool(query, "stats", input.Stats)
-	body, request, err := client.bucketRequest(ctx, http.MethodGet, query)
-	if err != nil {
-		return nil, err
-	}
-	result, err := decodeBuckets(body)
-	if err != nil {
-		return nil, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
-	}
-	return result, nil
+	setBool(query, "stats", &stats)
+	return client.bucketRequest(ctx, http.MethodGet, query)
 }
 
 type GetBucketRequest struct {
@@ -222,25 +241,4 @@ func (client *Client) bucketAction(ctx context.Context, method string, query url
 	}
 	_, err = client.do(request)
 	return err
-}
-
-func decodeBuckets(body []byte) ([]Bucket, error) {
-	var rawBuckets []json.RawMessage
-	if err := json.Unmarshal(body, &rawBuckets); err != nil {
-		return nil, err
-	}
-
-	buckets := make([]Bucket, 0, len(rawBuckets))
-	for _, raw := range rawBuckets {
-		var bucket Bucket
-		if len(raw) > 0 && raw[0] == '"' {
-			if err := json.Unmarshal(raw, &bucket.Name); err != nil {
-				return nil, err
-			}
-		} else if err := json.Unmarshal(raw, &bucket); err != nil {
-			return nil, err
-		}
-		buckets = append(buckets, bucket)
-	}
-	return buckets, nil
 }
