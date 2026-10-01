@@ -169,7 +169,8 @@ of the body envelope's key.
 - [x] `TrimBucketIndexLog` — `DELETE /admin/log?type=bucket-index`
 - [x] `GetDataLogInfo` — `GET /admin/log?type=data`
 - [x] `GetDataLogShardInfo` — `GET /admin/log?type=data&id=...&info`
-- [x] `ListDataLogEntries` — `GET /admin/log?type=data&id=...`
+- [x] `ListDataLogEntries` — `GET /admin/log?type=data&id=...&extra-info=true`
+- [x] `ListDataLogChanges` — `GET /admin/log?type=data&id=...&extra-info=false`
 - [x] `GetDataLogStatus` — `GET /admin/log?type=data&status`
 - [x] `NotifyDataLog` — `POST /admin/log?type=data&notify`
 - [x] `NotifyDataLogV2` — `POST /admin/log?type=data&notify2`
@@ -183,6 +184,16 @@ Metadata notifications send a JSON array of shard IDs. Data notifications
 send Ceph's array of key/val shard entries, with key-only strings for the
 original format and key/gen objects for `notify2`. Nil top-level notification
 slices are sent as empty arrays.
+
+Data-log listings share `ListDataLogEntriesRequest` for shard and pagination
+filters. `ListDataLogEntries` returns `DataLogEntryList` with log IDs, log
+timestamps, and nested changes; `ListDataLogChanges` returns `DataLogChangeList`
+with bare changes. Both pages retain `Marker`, `LastUpdate`, and `Truncated`.
+When `Truncated` is true, pass the page's opaque `Marker` to the next request.
+The former `ExtraInfo` flag and decoder accepting both entry formats are
+removed. These shapes are verified in Ceph v20.2.4's
+`src/rgw/driver/rados/rgw_rest_log.cc` (`RGWOp_DATALog_List`) and
+`rgw_datalog.cc` (`rgw_data_change::dump` and `rgw_data_change_log_entry::dump`).
 
 Trims remove log entries, retaining the underlying resources. Metadata and
 data trims use a bounding `Marker`; bucket-index trims use `StartMarker`,
