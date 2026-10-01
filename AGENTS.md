@@ -132,6 +132,13 @@ All source paths below refer to that tag.
   `rgw_bucket.cc` in the same directory resolves account membership from UID.
   Do not reintroduce an ineffective `AccountID` filter or a public `Stats` flag;
   the name-only and detailed methods must retain fixed return types.
+- Bucket ownership: that REST source parses both `uid` and `account-id` for
+  links and unlinks. `RGWBucketAdminOp::link/unlink` in `rgw_bucket.cc` selects
+  the account first, while `RGWBucket::init` still uses UID for bucket lookup.
+  Keep separate user/account methods and requests with only the applicable owner
+  identifier. Linking rejects account-member user ownership; unlinking removes
+  a list entry without changing bucket ownership. Verify both owner types and
+  unlink/relink roundtrips with real temporary resources.
 - Bucket synchronization: `RGWOp_Sync_Bucket` in the same REST source defaults
   an omitted or empty `sync` value to true. `RGWBucket::sync` in `rgw_bucket.cc`
   changes `BUCKET_DATASYNC_DISABLED` and writes the bucket metadata. Require

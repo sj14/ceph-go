@@ -93,14 +93,14 @@ func TestRGWGetBucket(t *testing.T) {
 	}
 }
 
-func TestRGWLinkBucket(t *testing.T) {
+func TestRGWLinkBucketToUser(t *testing.T) {
 	t.Parallel()
 
 	client := rgwIntegrationClient(t)
 	ctx := integrationContext(t)
 	userFixture, _ := createRGWUserFixture(t, client, ctx)
 	bucketFixture := createRGWBucketFixture(t, client, ctx)
-	if err := client.LinkBucket(ctx, rgw.LinkBucketRequest{
+	if err := client.LinkBucketToUser(ctx, rgw.LinkBucketToUserRequest{
 		Name: bucketFixture.name,
 		UID:  userFixture.uid,
 	}); err != nil {
@@ -115,13 +115,13 @@ func TestRGWLinkBucket(t *testing.T) {
 	}
 }
 
-func TestRGWUnlinkBucket(t *testing.T) {
+func TestRGWUnlinkBucketFromUser(t *testing.T) {
 	t.Parallel()
 
 	client := rgwIntegrationClient(t)
 	ctx := integrationContext(t)
 	fixture := createRGWBucketFixture(t, client, ctx)
-	if err := client.UnlinkBucket(ctx, rgw.UnlinkBucketRequest{
+	if err := client.UnlinkBucketFromUser(ctx, rgw.UnlinkBucketFromUserRequest{
 		Name: fixture.name,
 		UID:  "ceph-go-admin",
 	}); err != nil {
@@ -135,6 +135,110 @@ func TestRGWUnlinkBucket(t *testing.T) {
 		if bucket == fixture.name {
 			t.Fatalf("unlinked bucket %q remains in the owner's bucket list", fixture.name)
 		}
+	}
+	bucket, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bucket.Owner != "ceph-go-admin" {
+		t.Fatalf("unlink changed bucket owner to %q", bucket.Owner)
+	}
+	if err := client.LinkBucketToUser(ctx, rgw.LinkBucketToUserRequest{
+		Name: fixture.name, UID: "ceph-go-admin", BucketID: bucket.ID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	buckets, err = client.ListBucketNames(ctx, rgw.ListBucketsRequest{UID: "ceph-go-admin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(buckets, fixture.name) {
+		t.Fatal("relinked bucket is missing from the user's bucket list")
+	}
+}
+
+func rgwAccountBucketFixture(t *testing.T, client *rgw.Client, ctx context.Context) (accountID, userID string, bucket *rgwBucketFixture) {
+	t.Helper()
+	account, _ := createRGWAccountFixture(t, client, ctx)
+	user, _ := createRGWUserFixture(t, client, ctx)
+	if _, err := client.UpdateUser(ctx, rgw.UpdateUserRequest{
+		UID: user.uid, AccountID: &account.id, DisplayName: &user.uid,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return account.id, user.uid, createRGWBucketFixture(t, client, ctx)
+}
+
+func TestRGWLinkBucketToAccount(t *testing.T) {
+	t.Parallel()
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	accountID, userID, fixture := rgwAccountBucketFixture(t, client, ctx)
+	if err := client.LinkBucketToAccount(ctx, rgw.LinkBucketToAccountRequest{
+		Name: fixture.name, AccountID: accountID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	bucket, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bucket.Owner != accountID {
+		t.Fatalf("linked bucket owner = %q, want %q", bucket.Owner, accountID)
+	}
+	buckets, err := client.ListBucketNames(ctx, rgw.ListBucketsRequest{UID: userID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(buckets, fixture.name) {
+		t.Fatal("linked bucket is missing from the account's bucket list")
+	}
+}
+
+func TestRGWUnlinkBucketFromAccount(t *testing.T) {
+	t.Parallel()
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	accountID, userID, fixture := rgwAccountBucketFixture(t, client, ctx)
+	if err := client.LinkBucketToAccount(ctx, rgw.LinkBucketToAccountRequest{
+		Name: fixture.name, AccountID: accountID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	before, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.UnlinkBucketFromAccount(ctx, rgw.UnlinkBucketFromAccountRequest{
+		Name: fixture.name, AccountID: accountID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	buckets, err := client.ListBucketNames(ctx, rgw.ListBucketsRequest{UID: userID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if containsString(buckets, fixture.name) {
+		t.Fatal("unlinked bucket remains in the account's bucket list")
+	}
+	after, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Owner != accountID || after.ID != before.ID {
+		t.Fatalf("unlink changed bucket identity or owner: %#v", after)
+	}
+	if err := client.LinkBucketToAccount(ctx, rgw.LinkBucketToAccountRequest{
+		Name: fixture.name, AccountID: accountID, BucketID: before.ID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	buckets, err = client.ListBucketNames(ctx, rgw.ListBucketsRequest{UID: userID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(buckets, fixture.name) {
+		t.Fatal("relinked bucket is missing from the account's bucket list")
 	}
 }
 

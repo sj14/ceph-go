@@ -80,15 +80,20 @@ Omitting `Access` returns a validation error before sending a request.
 - [x] `GetBucket` — `GET /admin/bucket`
 - [x] `GetBucketPolicy` — `GET /admin/bucket?policy`
 - [x] `CheckBucketIndex` — `GET /admin/bucket?index`
-- [x] `LinkBucket` — `PUT /admin/bucket`
+- [x] `LinkBucketToUser` — `PUT /admin/bucket` with `uid`
+- [x] `LinkBucketToAccount` — `PUT /admin/bucket` with `account-id`
 - [x] `SetBucketQuota` — `PUT /admin/bucket?quota`
 - [x] `SetBucketSync` — `PUT /admin/bucket?sync`
-- [x] `UnlinkBucket` — `POST /admin/bucket`
+- [x] `UnlinkBucketFromUser` — `POST /admin/bucket` with `uid`
+- [x] `UnlinkBucketFromAccount` — `POST /admin/bucket` with `account-id`
 - [x] `DeleteBucket` — `DELETE /admin/bucket`
 - [x] `DeleteObject` — `DELETE /admin/bucket?object`
 
-The Admin Ops API does not create buckets. `LinkBucket` changes the owner link
-of an existing bucket; bucket creation remains an S3 operation.
+The Admin Ops API does not create buckets. The link methods assign an existing
+bucket to a user or account; bucket creation remains an S3 operation. Their
+requests take only the applicable owner identifier. Account members cannot own
+buckets individually; assign ownership to their account. Unlink methods remove
+the bucket from the selected owner's list while preserving its owner and objects.
 
 Both listing methods use `ListBucketsRequest.UID` to filter by user; an empty
 UID lists all buckets. For an account member, Ceph lists that account's buckets.

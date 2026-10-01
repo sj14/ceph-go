@@ -155,56 +155,73 @@ func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (Bu
 	return bucket, nil
 }
 
-type LinkBucketRequest struct {
+type LinkBucketToUserRequest struct {
+	Name     string
+	UID      string
+	BucketID string
+	NewName  string
+}
+
+// LinkBucketToUser assigns an existing bucket to a user through PUT /admin/bucket.
+// It does not create a bucket. Account members cannot own buckets individually;
+// use LinkBucketToAccount for an account owner.
+//
+// Verified against Ceph v20.2.4: src/rgw/driver/rados/rgw_rest_bucket.cc
+// (RGWOp_Bucket_Link/Unlink and dispatch), rgw_bucket.h (RGWBucketAdminOpState),
+// and rgw_bucket.cc (RGWBucket::init and RGWBucketAdminOp::link/unlink).
+func (client *Client) LinkBucketToUser(ctx context.Context, input LinkBucketToUserRequest) error {
+	return client.bucketOwnerAction(ctx, http.MethodPut, input.Name, "uid", input.UID, input.BucketID, input.NewName)
+}
+
+type LinkBucketToAccountRequest struct {
 	Name      string
-	UID       string
 	AccountID string
 	BucketID  string
 	NewName   string
 }
 
-// LinkBucket links an existing bucket to a user or account through
+// LinkBucketToAccount assigns an existing bucket to an account through
 // PUT /admin/bucket. It does not create a bucket.
-func (client *Client) LinkBucket(ctx context.Context, input LinkBucketRequest) error {
-	if ctx == nil {
-		return errors.New("rgw: context must not be nil")
-	}
-	if strings.TrimSpace(input.Name) == "" {
-		return errors.New("rgw: bucket name must not be empty")
-	}
-	if strings.TrimSpace(input.UID) == "" && strings.TrimSpace(input.AccountID) == "" {
-		return errors.New("rgw: user UID or account ID must not be empty")
-	}
-	query := url.Values{"bucket": {input.Name}}
-	setString(query, "uid", input.UID)
-	setString(query, "account-id", input.AccountID)
-	setString(query, "bucket-id", input.BucketID)
-	setString(query, "new-bucket-name", input.NewName)
-	return client.bucketAction(ctx, http.MethodPut, query)
+func (client *Client) LinkBucketToAccount(ctx context.Context, input LinkBucketToAccountRequest) error {
+	return client.bucketOwnerAction(ctx, http.MethodPut, input.Name, "account-id", input.AccountID, input.BucketID, input.NewName)
 }
 
-type UnlinkBucketRequest struct {
+type UnlinkBucketFromUserRequest struct {
+	Name string
+	UID  string
+}
+
+// UnlinkBucketFromUser removes a bucket from a user's bucket list through
+// POST /admin/bucket. It preserves the bucket, its owner, and its objects.
+func (client *Client) UnlinkBucketFromUser(ctx context.Context, input UnlinkBucketFromUserRequest) error {
+	return client.bucketOwnerAction(ctx, http.MethodPost, input.Name, "uid", input.UID, "", "")
+}
+
+type UnlinkBucketFromAccountRequest struct {
 	Name      string
-	UID       string
 	AccountID string
 }
 
-// UnlinkBucket removes a bucket from a user or account's bucket list through
-// POST /admin/bucket. It does not delete the bucket or its objects.
-func (client *Client) UnlinkBucket(ctx context.Context, input UnlinkBucketRequest) error {
+// UnlinkBucketFromAccount removes a bucket from an account's bucket list through
+// POST /admin/bucket. It preserves the bucket, its owner, and its objects.
+func (client *Client) UnlinkBucketFromAccount(ctx context.Context, input UnlinkBucketFromAccountRequest) error {
+	return client.bucketOwnerAction(ctx, http.MethodPost, input.Name, "account-id", input.AccountID, "", "")
+}
+
+func (client *Client) bucketOwnerAction(ctx context.Context, method, name, ownerParameter, ownerID, bucketID, newName string) error {
 	if ctx == nil {
 		return errors.New("rgw: context must not be nil")
 	}
-	if strings.TrimSpace(input.Name) == "" {
+	if strings.TrimSpace(name) == "" {
 		return errors.New("rgw: bucket name must not be empty")
 	}
-	if strings.TrimSpace(input.UID) == "" && strings.TrimSpace(input.AccountID) == "" {
-		return errors.New("rgw: user UID or account ID must not be empty")
+	if strings.TrimSpace(ownerID) == "" {
+		return fmt.Errorf("rgw: %s must not be empty", ownerParameter)
 	}
-	query := url.Values{"bucket": {input.Name}}
-	setString(query, "uid", input.UID)
-	setString(query, "account-id", input.AccountID)
-	return client.bucketAction(ctx, http.MethodPost, query)
+	query := url.Values{"bucket": {name}, ownerParameter: {ownerID}}
+	setString(query, "bucket-id", bucketID)
+	setString(query, "new-bucket-name", newName)
+	return client.bucketAction(ctx, method, query)
 }
 
 type DeleteBucketRequest struct {
