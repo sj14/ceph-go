@@ -150,8 +150,20 @@ func TestListBuckets(t *testing.T) {
 	}
 	for _, bucket := range buckets {
 		if bucket.Name == fixture.name {
-			if bucket.Owner != "ceph-go-test" || bucket.ID == "" {
+			if bucket.Owner != "ceph-go-test" || bucket.ID == "" || bucket.BID != fixture.name || bucket.CreationTime == "" {
 				t.Fatalf("listed bucket = %#v", bucket)
+			}
+			detail, err := client.GetBucket(ctx, mgr.GetBucketRequest{Name: bucket.BID})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if detail.ID != bucket.ID || detail.Name != bucket.Name || detail.BID != bucket.BID ||
+				detail.CreationTime != bucket.CreationTime || detail.Quota != bucket.Quota {
+				t.Fatalf("bucket details do not match summary: detail=%#v summary=%#v", detail.BucketSummary, bucket)
+			}
+			if detail.Encryption != mgr.BucketEncryptionDisabled || detail.Versioning == "" ||
+				detail.ACL == "" || len(detail.Lifecycle) == 0 || len(detail.Replication.Policy) == 0 {
+				t.Fatalf("GetBucket configuration = %#v", detail)
 			}
 			return
 		}

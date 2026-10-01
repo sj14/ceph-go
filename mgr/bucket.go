@@ -64,17 +64,13 @@ const (
 	BucketCannedACLAuthenticatedRead BucketCannedACL = "authenticated-read"
 )
 
-// Bucket is the bucket representation assembled by Ceph Dashboard. Fields
-// whose shape is controlled by RGW configuration are retained as raw JSON.
+// BucketSummary contains the identity, placement, statistics, and quota fields
+// returned by ListBuckets and embedded in the full Bucket representation.
+// It does not contain the S3 configuration retrieved by GetBucket.
 //
-// Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
-//   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwBucket.get)
-//   - src/pybind/mgr/dashboard/frontend/src/app/ceph/rgw/models/rgw-bucket.ts
-//   - src/pybind/mgr/dashboard/frontend/src/app/ceph/rgw/models/rgw-bucket-versioning.ts
-//   - src/pybind/mgr/dashboard/frontend/src/app/ceph/rgw/models/rgw-bucket-mfa-delete.ts
-//   - src/pybind/mgr/dashboard/frontend/src/app/shared/api/rgw-bucket.service.ts
-//   - src/pybind/mgr/dashboard/services/rgw_client.py
-type Bucket struct {
+// Verified against Ceph v20.2.4's
+// src/pybind/mgr/dashboard/controllers/rgw.py (RgwBucket.list and get).
+type BucketSummary struct {
 	Name                 string                  `json:"bucket"`
 	Tenant               string                  `json:"tenant"`
 	BID                  string                  `json:"bid"`
@@ -90,27 +86,45 @@ type Bucket struct {
 	JudgeReshardLockTime string                  `json:"judge_reshard_lock_time"`
 	ObjectLockEnabled    bool                    `json:"object_lock_enabled"`
 	MFAEnabled           bool                    `json:"mfa_enabled"`
-	Owner                string                  `json:"owner"`
-	Version              string                  `json:"ver"`
-	MasterVersion        string                  `json:"master_ver"`
-	MTime                string                  `json:"mtime"`
-	CreationTime         string                  `json:"creation_time"`
-	MaxMarker            string                  `json:"max_marker"`
-	Usage                map[string]StorageStats `json:"usage"`
-	Quota                Quota                   `json:"bucket_quota"`
-	ReadTracker          int64                   `json:"read_tracker"`
-	Encryption           BucketEncryptionStatus  `json:"encryption"`
-	Versioning           BucketVersioningState   `json:"versioning"`
-	MFADelete            BucketMFADeleteState    `json:"mfa_delete"`
-	BucketPolicy         json.RawMessage         `json:"bucket_policy"`
-	ACL                  string                  `json:"acl"`
-	Replication          BucketReplication       `json:"replication"`
-	Lifecycle            json.RawMessage         `json:"lifecycle"`
-	LifecycleProgress    json.RawMessage         `json:"lifecycle_progress"`
-	LockEnabled          bool                    `json:"lock_enabled"`
-	LockMode             LockMode                `json:"lock_mode"`
-	LockRetentionDays    *int64                  `json:"lock_retention_period_days"`
-	LockRetentionYears   *int64                  `json:"lock_retention_period_years"`
+	// Owner is the user UID or account ID. In list responses Dashboard replaces
+	// known account IDs with account names; GetBucket retains the owner ID.
+	Owner         string                  `json:"owner"`
+	Version       string                  `json:"ver"`
+	MasterVersion string                  `json:"master_ver"`
+	MTime         string                  `json:"mtime"`
+	CreationTime  string                  `json:"creation_time"`
+	MaxMarker     string                  `json:"max_marker"`
+	Usage         map[string]StorageStats `json:"usage"`
+	Quota         Quota                   `json:"bucket_quota"`
+	ReadTracker   int64                   `json:"read_tracker"`
+}
+
+// Bucket contains the full representation returned by GetBucket, including
+// its shared summary fields and S3 configuration. Configuration whose shape
+// is controlled by RGW is retained as raw JSON.
+//
+// Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
+//   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwBucket.get)
+//   - src/pybind/mgr/dashboard/frontend/src/app/ceph/rgw/models/rgw-bucket.ts
+//   - src/pybind/mgr/dashboard/frontend/src/app/ceph/rgw/models/rgw-bucket-versioning.ts
+//   - src/pybind/mgr/dashboard/frontend/src/app/ceph/rgw/models/rgw-bucket-mfa-delete.ts
+//   - src/pybind/mgr/dashboard/frontend/src/app/shared/api/rgw-bucket.service.ts
+//   - src/pybind/mgr/dashboard/services/rgw_client.py
+type Bucket struct {
+	BucketSummary
+
+	Encryption         BucketEncryptionStatus `json:"encryption"`
+	Versioning         BucketVersioningState  `json:"versioning"`
+	MFADelete          BucketMFADeleteState   `json:"mfa_delete"`
+	BucketPolicy       json.RawMessage        `json:"bucket_policy"`
+	ACL                string                 `json:"acl"`
+	Replication        BucketReplication      `json:"replication"`
+	Lifecycle          json.RawMessage        `json:"lifecycle"`
+	LifecycleProgress  json.RawMessage        `json:"lifecycle_progress"`
+	LockEnabled        bool                   `json:"lock_enabled"`
+	LockMode           LockMode               `json:"lock_mode"`
+	LockRetentionDays  *int64                 `json:"lock_retention_period_days"`
+	LockRetentionYears *int64                 `json:"lock_retention_period_years"`
 }
 
 // BucketExplicitPlacement contains explicitly selected RGW pools.
@@ -134,17 +148,17 @@ type ListBucketsRequest struct {
 	DaemonName string
 }
 
-// ListBuckets retrieves detailed buckets through GET /api/rgw/bucket using
-// Ceph Dashboard API version 1.1. The method sends stats=true so that its
-// return type is consistently []Bucket rather than Ceph's alternate []string
-// response.
+// ListBuckets retrieves bucket summaries with statistics through
+// GET /api/rgw/bucket using Ceph Dashboard API version 1.1. The method sends
+// stats=true. Use GetBucket for encryption, versioning, ACL, replication,
+// lifecycle, and detailed Object Lock configuration.
 //
 // Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
 //   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwBucket.list)
 //   - src/pybind/mgr/dashboard/controllers/_rest_controller.py
 //   - src/pybind/mgr/dashboard/frontend/src/app/shared/api/rgw-bucket.service.ts
 //   - qa/tasks/mgr/dashboard/test_rgw.py (RgwBucketTest.test_all)
-func (client *Client) ListBuckets(ctx context.Context, input ListBucketsRequest) ([]Bucket, error) {
+func (client *Client) ListBuckets(ctx context.Context, input ListBucketsRequest) ([]BucketSummary, error) {
 	if ctx == nil {
 		return nil, errors.New("mgr: context must not be nil")
 	}
@@ -165,7 +179,7 @@ func (client *Client) ListBuckets(ctx context.Context, input ListBucketsRequest)
 		return nil, err
 	}
 
-	var buckets []Bucket
+	var buckets []BucketSummary
 	if err := json.Unmarshal(body, &buckets); err != nil {
 		return nil, fmt.Errorf("mgr: decode GET %s response: %w", request.URL.Path, err)
 	}
@@ -179,7 +193,8 @@ type GetBucketRequest struct {
 	DaemonName string
 }
 
-// GetBucket retrieves a bucket through GET /api/rgw/bucket/{bucket}.
+// GetBucket retrieves a bucket with its S3 configuration through
+// GET /api/rgw/bucket/{bucket}.
 func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (Bucket, error) {
 	if ctx == nil {
 		return Bucket{}, errors.New("mgr: context must not be nil")

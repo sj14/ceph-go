@@ -74,8 +74,8 @@ is explicit.
 ### Buckets
 
 - [x] `CreateBucket` — `POST /api/rgw/bucket`
-- [x] `GetBucket` — `GET /api/rgw/bucket/{bucket}`
-- [x] `ListBuckets` — `GET /api/rgw/bucket?stats=true` (API version 1.1)
+- [x] `GetBucket` — `GET /api/rgw/bucket/{bucket}`, returns `Bucket`
+- [x] `ListBuckets` — `GET /api/rgw/bucket?stats=true` (API version 1.1), returns `[]BucketSummary`
 - [x] `UpdateBucket` — `PUT /api/rgw/bucket/{bucket}`
 - [x] `DeleteBucket` — `DELETE /api/rgw/bucket/{bucket}`
 - [ ] Set encryption configuration — `PUT /api/rgw/bucket/setEncryptionConfig`
@@ -91,6 +91,12 @@ is explicit.
 - [x] `GetBucketRateLimit` — `GET /api/rgw/bucket/{uid}/ratelimit`
 - [x] `UpdateBucketRateLimit` — `PUT /api/rgw/bucket/{uid}/ratelimit`
 - [ ] Get bucket and user counts — `GET /ui-api/rgw/bucket`
+
+`ListBuckets` returns identity, placement, statistics, and quota summaries.
+Use `GetBucket` for encryption, versioning, ACL, replication, lifecycle, and
+Object Lock configuration. `Bucket` embeds `BucketSummary`, so shared fields
+remain directly accessible. For account-owned buckets, list results may show
+an account name in `Owner`; `GetBucket` returns the owner ID.
 
 `UpdateBucketRequest.EncryptionEnabled` and `Lifecycle` are required pointers.
 Supply the settings you want retained on every update; omission returns a

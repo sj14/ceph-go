@@ -157,6 +157,15 @@ Period operations also use `src/rgw/driver/rados/rgw_period.cc`.
 
 ## Dashboard bucket update verification
 
+Dashboard bucket responses were also verified against v20.2.4's
+`RgwBucket.list` and `RgwBucket.get` in the controller below. Lists proxy Admin
+Ops statistics and add `bid`, while detail reads additionally fetch S3
+configuration. Return `[]BucketSummary` from `ListBuckets` and a full `Bucket`
+embedding the shared summary fields from `GetBucket`. Do not restore one
+model with zero-valued configuration fields for lists. The controller's
+`map_bucket_owners` replaces known account IDs with account names only in
+list responses; preserve and document that distinction.
+
 Verified against Ceph v20.2.4's
 `src/pybind/mgr/dashboard/controllers/rgw.py` (`RgwBucket.set`),
 `services/rgw_client.py` (encryption, lifecycle, and locking helpers), and
