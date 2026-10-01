@@ -80,7 +80,13 @@ legacy and generation-aware data-log notification formats.
 The Admin Ops API does not create buckets. `LinkBucket` changes the owner link
 of an existing bucket; bucket creation remains an S3 operation.
 
-Both listing methods use `ListBucketsRequest` for owner filters. `ListBuckets`
+Both listing methods use `ListBucketsRequest.UID` to filter by user; an empty
+UID lists all buckets. For an account member, Ceph lists that account's buckets.
+Ceph v20.2.4 does not parse `account-id` on the bucket-list REST endpoint, so
+the request has no `AccountID` filter. This is verified in
+`src/rgw/driver/rados/rgw_rest_bucket.cc` and `rgw_bucket.cc`.
+
+`ListBuckets`
 always fetches details and statistics; use `ListBucketNames` for the cheaper
 name-only listing. The request has no `Stats` flag, and name-only responses are
 never converted into partially populated `Bucket` values.

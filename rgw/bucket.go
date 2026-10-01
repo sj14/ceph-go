@@ -78,10 +78,15 @@ type BucketExplicitPlacement struct {
 	IndexPool     string `json:"index_pool"`
 }
 
-// ListBucketsRequest filters both bucket-name and detailed bucket listings.
+// ListBucketsRequest filters both bucket-name and detailed bucket listings by
+// user UID. An empty UID lists all buckets. For a user belonging to an account,
+// Ceph lists that account's buckets.
+//
+// Ceph v20.2.4's src/rgw/driver/rados/rgw_rest_bucket.cc
+// (RGWOp_Bucket_Info::execute) does not accept an account-id listing filter;
+// rgw_bucket.cc (RGWBucketAdminOp::info) resolves account membership from UID.
 type ListBucketsRequest struct {
-	UID       string
-	AccountID string
+	UID string
 }
 
 // ListBuckets lists detailed buckets through GET /admin/bucket?stats=true.
@@ -120,7 +125,6 @@ func (client *Client) listBuckets(ctx context.Context, input ListBucketsRequest,
 	}
 	query := url.Values{}
 	setString(query, "uid", input.UID)
-	setString(query, "account-id", input.AccountID)
 	setBool(query, "stats", &stats)
 	return client.bucketRequest(ctx, http.MethodGet, query)
 }
