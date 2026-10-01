@@ -17,7 +17,9 @@ separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
   authentication requirements, and tests when available.
 - Record the verified Ceph release and relevant source files in code comments, tests, or this file so that later updates can be compared deliberately.
 - Treat Ceph's release source code as authoritative when it differs from generated or published documentation.
-- Keep READMEs focused on usage, observable behavior, and migration guidance.
+- Keep READMEs focused on current usage and observable behavior. Until the
+  library has a stable release, do not document former methods, fields, values,
+  or migration history.
   Record source-file inventories, formatter details, and verification rationale
   in code comments, tests, or this file rather than expanding user documentation.
 

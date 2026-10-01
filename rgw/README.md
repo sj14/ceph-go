@@ -67,8 +67,6 @@ legacy and generation-aware data-log notification formats.
 internally. Both return the user's complete collection of that key type after
 creation, including existing keys. Swift creation requires a subuser and has
 no `AccessKey` field because Ceph derives the identity from the user and subuser.
-The former `CreateKey`, `CreateKeyRequest`, and `CreatedKeys` API is removed;
-use the method and request matching the credential type.
 
 ### Buckets
 
@@ -116,7 +114,7 @@ requests use optional `int64` limits and also support `MaxSizeKB`.
 
 `GetUsage` returns both entries and summaries. Use `ListUsageEntries` for
 detailed records or `ListUsageSummaries` for aggregate counters. All three
-share `GetUsageRequest` filters; `ShowEntries` and `ShowSummary` are removed.
+share `GetUsageRequest` filters.
 
 ### Metadata
 
@@ -186,7 +184,6 @@ filters. `ListDataLogEntries` returns `DataLogEntryList` with log IDs, log
 timestamps, and nested changes; `ListDataLogChanges` returns `DataLogChangeList`
 with bare changes. Both pages retain `Marker`, `LastUpdate`, and `Truncated`.
 When `Truncated` is true, pass the page's opaque `Marker` to the next request.
-The former `ExtraInfo` flag is removed; select the method for the desired format.
 
 Trims remove log entries, retaining the underlying resources. Metadata and
 data trims use a bounding `Marker`; bucket-index trims use `StartMarker`,
@@ -232,15 +229,12 @@ global reads accept no target. `GlobalRateLimitConfiguration` always contains
 the bucket, user, and anonymous defaults as values. The user and bucket methods
 return their stored configuration, without merging global defaults; an
 unconfigured resource returns zero limits with `Enabled` false.
-The former `GetRateLimit`, `GetRateLimitRequest`, and `RateLimitConfiguration`
-API is removed; select the getter for the intended target.
 
 Setters also use separate requests: user updates take `UID`, bucket updates
 take `Bucket` and optional `Tenant`, and global updates take `Scope` (`user`,
 `bucket`, or `anon`). Each embeds `RateLimitUpdate`; nil fields preserve stored
 values, zero limits mean unlimited, and `Enabled: new(false)` disables the limit.
-Provide at least one change. The former `SetRateLimit` and `SetRateLimitRequest`
-are removed; select the setter for the intended target.
+Provide at least one change.
 
 ```go
 err := client.SetUserRateLimit(ctx, rgw.SetUserRateLimitRequest{

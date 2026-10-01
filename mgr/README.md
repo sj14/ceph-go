@@ -106,9 +106,8 @@ use `&mgr.BucketObjectLockConfiguration{Enabled: new(false)}` for a bucket witho
 Object Lock. `Enabled` is required; nil returns a validation error. For an
 enabled bucket, set `Enabled: new(true)`, `Mode`, and exactly
 one positive `RetentionDays` or `RetentionYears`. This describes the current
-lock state; it does not enable or disable Object Lock. The previous flat
-`LockMode` and retention fields move into this configuration. Updates can
-partially apply before Ceph returns an error.
+lock state; it does not enable or disable Object Lock. Updates can partially
+apply before Ceph returns an error.
 
 ### Status and multisite setup
 
