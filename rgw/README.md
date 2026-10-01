@@ -238,7 +238,18 @@ The authoritative handlers are `src/rgw/rgw_rest_config.cc`/`.h` and
 
 ### Rate limits
 
-- [x] `GetRateLimit` — get user, bucket, or global rate limits through
-  `GET /admin/ratelimit`
+- [x] `GetUserRateLimit` — `GET /admin/ratelimit?ratelimit-scope=user`, returns `RateLimit`
+- [x] `GetBucketRateLimit` — `GET /admin/ratelimit?ratelimit-scope=bucket`, returns `RateLimit`
+- [x] `GetGlobalRateLimits` — `GET /admin/ratelimit?global=true`, returns `GlobalRateLimitConfiguration`
 - [x] `SetRateLimit` — set user, bucket, or global rate limits through
   `POST /admin/ratelimit`
+
+Rate-limit reads have fixed response types and separate user/bucket requests;
+global reads accept no target. `GlobalRateLimitConfiguration` always contains
+the bucket, user, and anonymous defaults as values. The user and bucket methods
+return their stored configuration, without merging global defaults; an
+unconfigured resource returns zero limits with `Enabled` false.
+These response forms are verified in Ceph v20.2.4's
+`src/rgw/rgw_rest_ratelimit.cc` (`RGWOp_Ratelimit_Info::execute`).
+The former `GetRateLimit`, `GetRateLimitRequest`, and `RateLimitConfiguration`
+API is removed; select the getter for the intended target.

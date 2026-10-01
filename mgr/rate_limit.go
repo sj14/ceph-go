@@ -12,11 +12,7 @@ import (
 )
 
 // GlobalRateLimitConfiguration contains all global RGW rate-limit scopes.
-type GlobalRateLimitConfiguration struct {
-	Bucket    rgw.RateLimit `json:"bucket_ratelimit"`
-	User      rgw.RateLimit `json:"user_ratelimit"`
-	Anonymous rgw.RateLimit `json:"anonymous_ratelimit"`
-}
+type GlobalRateLimitConfiguration = rgw.GlobalRateLimitConfiguration
 
 func (client *Client) getRateLimit(ctx context.Context, endpoint *url.URL, configuration any) error {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)

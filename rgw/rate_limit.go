@@ -36,50 +36,91 @@ type RateLimit struct {
 	Enabled       bool  `json:"enabled"`
 }
 
-// RateLimitConfiguration contains the sections returned by RGW. A scoped
-// request sets only User or Bucket; a global request sets all three fields.
-type RateLimitConfiguration struct {
-	Bucket    *RateLimit `json:"bucket_ratelimit,omitempty"`
-	User      *RateLimit `json:"user_ratelimit,omitempty"`
-	Anonymous *RateLimit `json:"anonymous_ratelimit,omitempty"`
+// GlobalRateLimitConfiguration contains all global RGW rate-limit defaults.
+// All three scopes are returned by Ceph v20.2.4's src/rgw/rgw_rest_ratelimit.cc
+// (RGWOp_Ratelimit_Info::execute).
+type GlobalRateLimitConfiguration struct {
+	Bucket    RateLimit `json:"bucket_ratelimit"`
+	User      RateLimit `json:"user_ratelimit"`
+	Anonymous RateLimit `json:"anonymous_ratelimit"`
 }
 
-type GetRateLimitRequest struct {
-	Scope  RateLimitScope
-	UID    string
-	Bucket string
-	Tenant string
-	Global bool
+type GetUserRateLimitRequest struct {
+	UID string
 }
 
-// GetRateLimit retrieves a user, bucket, or complete global configuration
-// through GET /admin/ratelimit. Global requests return the bucket, user, and
-// anonymous defaults and do not require a scope.
-func (client *Client) GetRateLimit(ctx context.Context, input GetRateLimitRequest) (RateLimitConfiguration, error) {
+// GetUserRateLimit retrieves the user's stored rate-limit configuration
+// through GET /admin/ratelimit?ratelimit-scope=user. It does not merge global
+// defaults; a user without a stored configuration has zero limits and is disabled.
+func (client *Client) GetUserRateLimit(ctx context.Context, input GetUserRateLimitRequest) (RateLimit, error) {
 	if ctx == nil {
-		return RateLimitConfiguration{}, errors.New("rgw: context must not be nil")
+		return RateLimit{}, errors.New("rgw: context must not be nil")
 	}
 	query := url.Values{}
-	if input.Global {
-		query.Set("global", "true")
-	} else {
-		if err := setRateLimitTarget(query, input.Scope, input.UID, input.Bucket, input.Tenant, false); err != nil {
-			return RateLimitConfiguration{}, err
-		}
+	if err := setRateLimitTarget(query, RateLimitScopeUser, input.UID, "", "", false); err != nil {
+		return RateLimit{}, err
+	}
+	var response struct {
+		User RateLimit `json:"user_ratelimit"`
+	}
+	if err := client.getRateLimit(ctx, query, &response); err != nil {
+		return RateLimit{}, err
+	}
+	return response.User, nil
+}
+
+type GetBucketRateLimitRequest struct {
+	Bucket string
+	Tenant string
+}
+
+// GetBucketRateLimit retrieves the bucket's stored rate-limit configuration
+// through GET /admin/ratelimit?ratelimit-scope=bucket. It does not merge global
+// defaults; a bucket without a stored configuration has zero limits and is disabled.
+func (client *Client) GetBucketRateLimit(ctx context.Context, input GetBucketRateLimitRequest) (RateLimit, error) {
+	if ctx == nil {
+		return RateLimit{}, errors.New("rgw: context must not be nil")
+	}
+	query := url.Values{}
+	if err := setRateLimitTarget(query, RateLimitScopeBucket, "", input.Bucket, input.Tenant, false); err != nil {
+		return RateLimit{}, err
+	}
+	var response struct {
+		Bucket RateLimit `json:"bucket_ratelimit"`
+	}
+	if err := client.getRateLimit(ctx, query, &response); err != nil {
+		return RateLimit{}, err
+	}
+	return response.Bucket, nil
+}
+
+// GetGlobalRateLimits retrieves the bucket, user, and anonymous defaults
+// through GET /admin/ratelimit?global=true. These are global defaults, rather
+// than the stored configuration of an individual user or bucket.
+func (client *Client) GetGlobalRateLimits(ctx context.Context) (GlobalRateLimitConfiguration, error) {
+	var configuration GlobalRateLimitConfiguration
+	if err := client.getRateLimit(ctx, url.Values{"global": {"true"}}, &configuration); err != nil {
+		return GlobalRateLimitConfiguration{}, err
+	}
+	return configuration, nil
+}
+
+func (client *Client) getRateLimit(ctx context.Context, query url.Values, result any) error {
+	if ctx == nil {
+		return errors.New("rgw: context must not be nil")
 	}
 	request, err := client.newRequest(ctx, http.MethodGet, "ratelimit", query)
 	if err != nil {
-		return RateLimitConfiguration{}, err
+		return err
 	}
 	body, err := client.do(request)
 	if err != nil {
-		return RateLimitConfiguration{}, err
+		return err
 	}
-	var configuration RateLimitConfiguration
-	if err := json.Unmarshal(body, &configuration); err != nil {
-		return RateLimitConfiguration{}, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
+	if err := json.Unmarshal(body, result); err != nil {
+		return fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
 	}
-	return configuration, nil
+	return nil
 }
 
 type SetRateLimitRequest struct {
