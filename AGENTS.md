@@ -47,7 +47,9 @@ separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
   shape-switching flag or normalize a name-only response into a mostly empty
   resource struct. Reuse shared filters and full domain models where appropriate.
   Model genuinely optional data explicitly, so missing data cannot be mistaken
-  for a real zero value. Prefer clear, hard-to-misuse APIs over preserving a
+  for a real zero value. Do not expose arbitrary field-selection parameters
+  when decoding into a full resource model; request all ordinary fields instead.
+  Prefer clear, hard-to-misuse APIs over preserving a
   confusing interface; breaking changes are acceptable when needed for this.
 - Return decoded domain models and errors from endpoint methods. Keep HTTP status, headers, and raw successful response bodies internal unless an endpoint exposes meaningful transport metadata that callers need.
 - Return single resources by value as `(Resource, error)`, collections as `([]Resource, error)`, and actions without a meaningful result as `error`. Use pointers within models only for nullable fields or when absence must be distinguishable from a zero value.
@@ -191,3 +193,21 @@ may already have changed. Document partial failure behavior and validate the
 known conflict between enabled Object Lock and suspended versioning locally.
 Integration coverage must check rejection without mutation, explicit retention
 of settings, and deliberate encryption/lifecycle deletion.
+
+## Dashboard pool read verification
+
+Verified against Ceph v20.2.4's `Pool._serialize_pool`, `_pool_list`, and `get`
+in `src/pybind/mgr/dashboard/controllers/pool.py`, its REST routing in
+`controllers/_rest_controller.py`, and `services/ceph_service.py`
+(`get_pool_list` and `get_pool_list_with_stats`), relative to
+`src/pybind/mgr/dashboard` for the latter two paths. The frontend's
+`frontend/src/app/shared/api/pool.service.ts` and
+`qa/tasks/mgr/dashboard/test_pool.py` exercise these reads.
+
+Ceph's `attrs` parameter omits ordinary fields, leaving only `pool_name`
+mandatory. Keep it out of `ListPoolsRequest` and `GetPoolRequest` so callers
+cannot mistake unrequested fields for actual zero values in `Pool`.
+Retain the statistics choice: `Stats` and `PGStatus` are nullable maps when
+not requested. `Configuration` and `ScheduleInfo` are added only by `GetPool`
+and explicitly represent their absence in list results. Integration coverage
+must check ordinary fields and statistics presence with both statistics choices.

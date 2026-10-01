@@ -305,12 +305,10 @@ type PoolInfo struct {
 	Nodes                         []CrushNode                `json:"nodes"`
 }
 
-// ListPoolsRequest controls the optional fields and statistics returned by
-// Ceph. Attributes use the names from Pool's JSON tags. When Attributes is
-// empty, Ceph returns all ordinary pool fields.
+// ListPoolsRequest controls whether pool statistics are included. All ordinary
+// pool fields are always requested.
 type ListPoolsRequest struct {
-	Attributes []string
-	Stats      bool
+	Stats bool
 }
 
 // ListPools retrieves pools through GET /api/pool.
@@ -320,7 +318,7 @@ func (client *Client) ListPools(ctx context.Context, input ListPoolsRequest) ([]
 	}
 
 	endpoint := client.endpoint("api/pool")
-	endpoint.RawQuery = poolQuery(input.Attributes, input.Stats).Encode()
+	endpoint.RawQuery = poolQuery(input.Stats).Encode()
 
 	var pools []Pool
 	if err := client.getPoolResource(ctx, endpoint, &pools); err != nil {
@@ -329,13 +327,11 @@ func (client *Client) ListPools(ctx context.Context, input ListPoolsRequest) ([]
 	return pools, nil
 }
 
-// GetPoolRequest identifies a pool and controls its optional response fields.
-// Ceph always returns Name and Configuration even when Attributes filters the
-// ordinary pool fields.
+// GetPoolRequest identifies a pool and controls whether statistics are included.
+// All ordinary pool fields, Configuration, and ScheduleInfo are always requested.
 type GetPoolRequest struct {
-	Name       string
-	Attributes []string
-	Stats      bool
+	Name  string
+	Stats bool
 }
 
 // GetPool retrieves one pool through GET /api/pool/{pool_name}.
@@ -348,7 +344,7 @@ func (client *Client) GetPool(ctx context.Context, input GetPoolRequest) (Pool, 
 	}
 
 	endpoint := client.poolEndpoint(input.Name)
-	endpoint.RawQuery = poolQuery(input.Attributes, input.Stats).Encode()
+	endpoint.RawQuery = poolQuery(input.Stats).Encode()
 
 	var pool Pool
 	err := client.getPoolResource(ctx, endpoint, &pool)
@@ -394,11 +390,8 @@ func (client *Client) GetPoolInfo(ctx context.Context) (PoolInfo, error) {
 	return info, err
 }
 
-func poolQuery(attributes []string, stats bool) url.Values {
+func poolQuery(stats bool) url.Values {
 	query := url.Values{}
-	if len(attributes) > 0 {
-		query.Set("attrs", strings.Join(attributes, ","))
-	}
 	if stats {
 		query.Set("stats", strconv.FormatBool(stats))
 	}

@@ -13,35 +13,63 @@ const testPoolName = ".mgr"
 func TestListPools(t *testing.T) {
 	t.Parallel()
 
-	pools, err := integrationClient(t).ListPools(integrationContext(t), mgr.ListPoolsRequest{Stats: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, pool := range pools {
-		if pool.Name == testPoolName {
-			if pool.Type == "" || pool.Stats == nil || pool.PGStatus == nil {
-				t.Fatalf("listed pool = %#v", pool)
-			}
-			return
+	for _, stats := range []bool{false, true} {
+		name := "without statistics"
+		if stats {
+			name = "with statistics"
 		}
+		t.Run(name, func(t *testing.T) {
+			pools, err := integrationClient(t).ListPools(integrationContext(t), mgr.ListPoolsRequest{Stats: stats})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, pool := range pools {
+				if pool.Name == testPoolName {
+					checkPoolFields(t, pool, stats)
+					if pool.Configuration != nil || pool.ScheduleInfo != nil {
+						t.Fatalf("list unexpectedly contains pool detail fields: %#v", pool)
+					}
+					return
+				}
+			}
+			t.Fatalf("default pool %q is missing from ListPools", testPoolName)
+		})
 	}
-	t.Fatalf("default pool %q is missing from ListPools", testPoolName)
 }
 
 func TestGetPool(t *testing.T) {
 	t.Parallel()
 
-	pool, err := integrationClient(t).GetPool(integrationContext(t), mgr.GetPoolRequest{
-		Name:       testPoolName,
-		Attributes: []string{"type", "flags", "stats"},
-		Stats:      true,
-	})
-	if err != nil {
-		t.Fatal(err)
+	for _, stats := range []bool{false, true} {
+		name := "without statistics"
+		if stats {
+			name = "with statistics"
+		}
+		t.Run(name, func(t *testing.T) {
+			pool, err := integrationClient(t).GetPool(integrationContext(t), mgr.GetPoolRequest{
+				Name:  testPoolName,
+				Stats: stats,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			checkPoolFields(t, pool, stats)
+			if pool.Configuration == nil || pool.ScheduleInfo == nil {
+				t.Fatalf("pool detail fields missing: %#v", pool)
+			}
+		})
 	}
-	if pool.Name != testPoolName || pool.Type == "" || pool.Stats == nil ||
-		pool.Configuration == nil || pool.ScheduleInfo == nil {
+}
+
+func checkPoolFields(t *testing.T, pool mgr.Pool, stats bool) {
+	t.Helper()
+
+	if pool.Name != testPoolName || pool.Type == "" || pool.Size <= 0 ||
+		pool.MinSize <= 0 || pool.PGNum <= 0 || pool.CrushRule == "" {
 		t.Fatalf("pool = %#v", pool)
+	}
+	if (pool.Stats != nil) != stats || (pool.PGStatus != nil) != stats {
+		t.Fatalf("pool statistics presence does not match Stats=%t: %#v", stats, pool)
 	}
 }
 
