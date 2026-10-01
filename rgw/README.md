@@ -124,12 +124,18 @@ error before sending a request.
 ### Accounts
 
 - [x] `GetAccount` — `GET /admin/account`
+- [x] `GetAccountByName` — `GET /admin/account?name=...`
 - [x] `CreateAccount` — `POST /admin/account`
 - [x] `UpdateAccount` — `PUT /admin/account`
 - [x] `SetAccountQuota` — `PUT /admin/account?quota`
 - [x] `DeleteAccount` — `DELETE /admin/account`
+- [x] `DeleteAccountByName` — `DELETE /admin/account?name=...`
 
-`UpdateAccount` requires `ID`; use `GetAccount` to resolve it by tenant and name
+`GetAccount` and `DeleteAccount` require `ID`. The `ByName` methods require
+`Name` and accept `Tenant`; empty `Tenant` selects the default tenant.
+Both deletion methods require an empty account.
+
+`UpdateAccount` requires `ID`; use `GetAccountByName` to resolve it by tenant and name
 when needed. `Name` and `Email` are update values, with empty strings preserving
 stored values. Nil limits preserve stored values. An account's tenant is immutable.
 

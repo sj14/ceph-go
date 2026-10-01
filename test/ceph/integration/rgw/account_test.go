@@ -17,7 +17,7 @@ type rgwAccountFixture struct {
 
 func createRGWAccountFixture(t *testing.T, client *rgw.Client, ctx context.Context) (*rgwAccountFixture, rgw.Account) {
 	t.Helper()
-	account, err := client.CreateAccount(ctx, rgw.CreateAccountRequest{
+	return createRGWAccountFixtureFromRequest(t, client, ctx, rgw.CreateAccountRequest{
 		Name:          uniqueResourceName(t, "ceph-go-admin-integration-account"),
 		Email:         uniqueResourceName(t, "account") + "@example.invalid",
 		MaxUsers:      new(int64(11)),
@@ -26,6 +26,11 @@ func createRGWAccountFixture(t *testing.T, client *rgw.Client, ctx context.Conte
 		MaxAccessKeys: new(int64(14)),
 		MaxBuckets:    new(int64(15)),
 	})
+}
+
+func createRGWAccountFixtureFromRequest(t *testing.T, client *rgw.Client, ctx context.Context, input rgw.CreateAccountRequest) (*rgwAccountFixture, rgw.Account) {
+	t.Helper()
+	account, err := client.CreateAccount(ctx, input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,6 +72,77 @@ func TestRGWGetAccount(t *testing.T) {
 	}
 	if account.ID != fixture.id || account.Name != created.Name || account.Email != created.Email {
 		t.Fatalf("Admin Ops account = %#v", account)
+	}
+}
+
+func TestRGWAccountByName(t *testing.T) {
+	t.Parallel()
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	name := uniqueResourceName(t, "account-by-name")
+	tenant := uniqueResourceName(t, "tenant")
+	var fixtures []*rgwAccountFixture
+	var accounts []rgw.Account
+	for _, selectedTenant := range []string{"", tenant} {
+		fixture, account := createRGWAccountFixtureFromRequest(t, client, ctx, rgw.CreateAccountRequest{
+			Name: name, Tenant: selectedTenant,
+		})
+		fixtures = append(fixtures, fixture)
+		accounts = append(accounts, account)
+		got, err := client.GetAccountByName(ctx, rgw.GetAccountByNameRequest{Tenant: selectedTenant, Name: name})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != account {
+			t.Fatalf("account by tenant/name = %#v, want %#v", got, account)
+		}
+	}
+	for _, value := range []string{"", " "} {
+		_, getIDErr := client.GetAccount(ctx, rgw.GetAccountRequest{ID: value})
+		deleteIDErr := client.DeleteAccount(ctx, rgw.DeleteAccountRequest{ID: value})
+		_, getNameErr := client.GetAccountByName(ctx, rgw.GetAccountByNameRequest{Tenant: tenant, Name: value})
+		deleteNameErr := client.DeleteAccountByName(ctx, rgw.DeleteAccountByNameRequest{Tenant: tenant, Name: value})
+		for _, err := range []error{getIDErr, deleteIDErr, getNameErr, deleteNameErr} {
+			var apiErr *rgw.APIError
+			if err == nil || errors.As(err, &apiErr) {
+				t.Fatalf("missing account selector error = %v, want local validation error", err)
+			}
+		}
+	}
+	wrongTenant := uniqueResourceName(t, "missing-tenant")
+	_, err := client.GetAccountByName(ctx, rgw.GetAccountByNameRequest{Tenant: wrongTenant, Name: name})
+	requireRGWAPIStatus(t, err, 404)
+	err = client.DeleteAccountByName(ctx, rgw.DeleteAccountByNameRequest{Tenant: wrongTenant, Name: name})
+	requireRGWAPIStatus(t, err, 404)
+	for _, account := range accounts {
+		got, err := client.GetAccount(ctx, rgw.GetAccountRequest{ID: account.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != account {
+			t.Fatalf("rejected deletion changed account: %#v, want %#v", got, account)
+		}
+	}
+	for i := len(accounts) - 1; i >= 0; i-- {
+		account := accounts[i]
+		if err := client.DeleteAccountByName(ctx, rgw.DeleteAccountByNameRequest{Tenant: account.Tenant, Name: account.Name}); err != nil {
+			t.Fatal(err)
+		}
+		fixtures[i].deleted = true
+		_, err := client.GetAccount(ctx, rgw.GetAccountRequest{ID: account.ID})
+		requireRGWAPIStatus(t, err, 404)
+		_, err = client.GetAccountByName(ctx, rgw.GetAccountByNameRequest{Tenant: account.Tenant, Name: account.Name})
+		requireRGWAPIStatus(t, err, 404)
+		// Deleting the named tenant must leave the default tenant's account.
+		if i > 0 {
+			got, err := client.GetAccountByName(ctx, rgw.GetAccountByNameRequest{Name: name})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != accounts[0] {
+				t.Fatalf("deletion changed default tenant's account: %#v", got)
+			}
+		}
 	}
 }
 

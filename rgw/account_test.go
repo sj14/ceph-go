@@ -95,7 +95,7 @@ func TestAccountEndpoints(t *testing.T) {
 			method: http.MethodDelete,
 			query:  url.Values{"tenant": {"tenant"}, "name": {"name"}},
 			call: func(ctx context.Context, client *Client) error {
-				return client.DeleteAccount(ctx, DeleteAccountRequest{Tenant: "tenant", Name: "name"})
+				return client.DeleteAccountByName(ctx, DeleteAccountByNameRequest{Tenant: "tenant", Name: "name"})
 			},
 		},
 	}

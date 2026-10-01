@@ -31,22 +31,36 @@ type Account struct {
 	MaxAccessKeys int64  `json:"max_access_keys"`
 }
 
-// GetAccountRequest identifies an account by ID or by tenant and name.
+// GetAccountRequest identifies an account by its required ID.
 type GetAccountRequest struct {
-	ID     string
+	ID string
+}
+
+// GetAccount retrieves an account by ID through GET /admin/account.
+// Verified against Ceph v20.2.4's src/rgw/rgw_rest_account.cc
+// (RGWOp_Account_Get) and src/rgw/rgw_account.cc (info).
+func (client *Client) GetAccount(ctx context.Context, input GetAccountRequest) (Account, error) {
+	query, err := accountLookupQuery(ctx, "id", input.ID, "")
+	if err != nil {
+		return Account{}, err
+	}
+	return client.accountRequest(ctx, http.MethodGet, query)
+}
+
+// GetAccountByNameRequest identifies an account by its required Name within
+// Tenant. Empty Tenant selects the default tenant.
+type GetAccountByNameRequest struct {
 	Tenant string
 	Name   string
 }
 
-// GetAccount retrieves an account directly through GET /admin/account.
-func (client *Client) GetAccount(ctx context.Context, input GetAccountRequest) (Account, error) {
-	if ctx == nil {
-		return Account{}, errors.New("rgw: context must not be nil")
+// GetAccountByName retrieves an account by tenant and name through
+// GET /admin/account?name=....
+func (client *Client) GetAccountByName(ctx context.Context, input GetAccountByNameRequest) (Account, error) {
+	query, err := accountLookupQuery(ctx, "name", input.Name, input.Tenant)
+	if err != nil {
+		return Account{}, err
 	}
-	if strings.TrimSpace(input.ID) == "" && strings.TrimSpace(input.Name) == "" {
-		return Account{}, errors.New("rgw: account ID or name must not be empty")
-	}
-	query := accountIdentityQuery(input.ID, input.Tenant, input.Name)
 	return client.accountRequest(ctx, http.MethodGet, query)
 }
 
@@ -142,23 +156,54 @@ func (client *Client) SetAccountQuota(ctx context.Context, input SetAccountQuota
 	return client.accountRequest(ctx, http.MethodPut, query)
 }
 
-// DeleteAccountRequest identifies an account by ID or by tenant and name.
+// DeleteAccountRequest identifies an account by its required ID.
 // Ceph v20.2.4 only deletes an empty account through this REST endpoint.
 type DeleteAccountRequest struct {
-	ID     string
+	ID string
+}
+
+// DeleteAccount deletes an empty account by ID through DELETE /admin/account.
+// Verified against Ceph v20.2.4's src/rgw/rgw_rest_account.cc
+// (RGWOp_Account_Delete) and src/rgw/rgw_account.cc (remove).
+func (client *Client) DeleteAccount(ctx context.Context, input DeleteAccountRequest) error {
+	query, err := accountLookupQuery(ctx, "id", input.ID, "")
+	if err != nil {
+		return err
+	}
+	return client.deleteAccount(ctx, query)
+}
+
+// DeleteAccountByNameRequest identifies an empty account by its required Name
+// within Tenant. Empty Tenant selects the default tenant.
+type DeleteAccountByNameRequest struct {
 	Tenant string
 	Name   string
 }
 
-// DeleteAccount deletes an empty account directly through DELETE /admin/account.
-func (client *Client) DeleteAccount(ctx context.Context, input DeleteAccountRequest) error {
+// DeleteAccountByName deletes an empty account by tenant and name through
+// DELETE /admin/account?name=....
+func (client *Client) DeleteAccountByName(ctx context.Context, input DeleteAccountByNameRequest) error {
+	query, err := accountLookupQuery(ctx, "name", input.Name, input.Tenant)
+	if err != nil {
+		return err
+	}
+	return client.deleteAccount(ctx, query)
+}
+
+func accountLookupQuery(ctx context.Context, selector, value, tenant string) (url.Values, error) {
 	if ctx == nil {
-		return errors.New("rgw: context must not be nil")
+		return nil, errors.New("rgw: context must not be nil")
 	}
-	if strings.TrimSpace(input.ID) == "" && strings.TrimSpace(input.Name) == "" {
-		return errors.New("rgw: account ID or name must not be empty")
+	if strings.TrimSpace(value) == "" {
+		return nil, fmt.Errorf("rgw: account %s must not be empty", selector)
 	}
-	request, err := client.newRequest(ctx, http.MethodDelete, "account", accountIdentityQuery(input.ID, input.Tenant, input.Name))
+	query := url.Values{selector: {value}}
+	setString(query, "tenant", tenant)
+	return query, nil
+}
+
+func (client *Client) deleteAccount(ctx context.Context, query url.Values) error {
+	request, err := client.newRequest(ctx, http.MethodDelete, "account", query)
 	if err != nil {
 		return err
 	}

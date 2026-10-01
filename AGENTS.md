@@ -186,6 +186,14 @@ All source paths below refer to that tag.
   of the update request; empty name/email and nil limits preserve stored values.
   Integration coverage must verify missing-ID rejection without mutation and
   name/email updates by ID with an unrelated account unchanged.
+- Account reads and deletions: `RGWOp_Account_Get/Delete` in that REST source
+  parse ID, tenant, and name. `info/remove` in `src/rgw/rgw_account.cc` choose
+  ID when present, ignoring tenant/name without checking they match; a failed
+  ID lookup does not fall back to name. Keep ID-only `GetAccount/DeleteAccount`
+  and separate `ByName` methods requiring Name with optional Tenant. Empty
+  Tenant selects the default tenant. Deletion remains limited to empty accounts.
+  Integration tests must verify identical names across tenants, required-target
+  validation without deletion, and deletion of only the selected account.
 - Quota size updates: `RGWOp_Quota_Set` in
   `src/rgw/driver/rados/rgw_rest_user.cc` and `RGWOp_Set_Bucket_Quota` in
   `src/rgw/driver/rados/rgw_rest_bucket.cc` parse `max-size` as bytes, then
