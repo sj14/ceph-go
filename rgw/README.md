@@ -53,7 +53,8 @@ legacy and generation-aware data-log notification formats.
 - [x] `GetUserBucketQuota` — `GET /admin/user?quota&quota-type=bucket`, returns `Quota`
 - [x] `CreateUser` — `PUT /admin/user`
 - [x] `CreateSubuser` — `PUT /admin/user?subuser`
-- [x] `CreateKey` — `PUT /admin/user?key`
+- [x] `CreateS3Key` — `PUT /admin/user?key&key-type=s3`, returns `[]AccessKey`
+- [x] `CreateSwiftKey` — `PUT /admin/user?key&key-type=swift`, returns `[]SwiftKey`
 - [x] `AddUserCapabilities` — `PUT /admin/user?caps`
 - [x] `SetUserQuota` — `PUT /admin/user?quota`
 - [x] `UpdateUser` — `POST /admin/user`
@@ -62,6 +63,16 @@ legacy and generation-aware data-log notification formats.
 - [x] `DeleteSubuser` — `DELETE /admin/user?subuser`
 - [x] `DeleteKey` — `DELETE /admin/user?key`
 - [x] `DeleteUserCapabilities` — `DELETE /admin/user?caps`
+
+`CreateS3Key` and `CreateSwiftKey` use separate requests and fix the key type
+internally. Both return the user's complete collection of that key type after
+creation, including existing keys. Swift creation requires a subuser and has
+no `AccessKey` field because Ceph derives the identity from the user and subuser.
+These contracts are verified in Ceph v20.2.4's
+`src/rgw/driver/rados/rgw_rest_user.cc` (`RGWOp_Key_Create`) and
+`rgw_user.cc` (`RGWUserAdminOp_Key::create` and `RGWAccessKeyPool::generate_key`).
+The former `CreateKey`, `CreateKeyRequest`, and `CreatedKeys` API is removed;
+use the method and request matching the credential type.
 
 ### Buckets
 
