@@ -60,6 +60,9 @@ separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
 - Require an explicit setting for actions whose omitted state triggers a
   mutation. A nullable setting must not silently mean "leave unchanged" when
   Ceph instead applies a default; validate its presence before sending.
+- Expose one explicit unit for each request quantity when Ceph accepts multiple
+  equivalent parameters with precedence rules. Prefer the stored domain unit
+  rather than allowing conflicting values that the server silently overrides.
 - Return decoded domain models and errors from endpoint methods. Keep HTTP status, headers, and raw successful response bodies internal unless an endpoint exposes meaningful transport metadata that callers need.
 - Return single resources by value as `(Resource, error)`, collections as `([]Resource, error)`, and actions without a meaningful result as `error`. Use pointers within models only for nullable fields or when absence must be distinguishable from a zero value.
 - Preserve Ceph's actual HTTP method, route, media type, parameter location, parameter names, and response status.
@@ -132,6 +135,13 @@ All source paths below refer to that tag.
   `rgw/metadata.go`.
 - Account quotas: the REST parser uses `int32` limits while stored quota
   models use `int64`; preserve the distinct request representation.
+- Quota size updates: `RGWOp_Quota_Set` in
+  `src/rgw/driver/rados/rgw_rest_user.cc` and `RGWOp_Set_Bucket_Quota` in
+  `src/rgw/driver/rados/rgw_rest_bucket.cc` parse `max-size` as bytes, then
+  overwrite it when `max-size-kb` is present. Expose only the byte setting in
+  user and named-bucket requests. Keep the response's derived `MaxSizeKB`,
+  emitted by `RGWQuotaInfo::dump` in `src/rgw/rgw_quota.cc`. Integration tests
+  must verify exact byte values and preservation during partial updates.
 - Data-log listing: `src/rgw/driver/rados/rgw_rest_log.cc`
   (`RGWOp_DATALog_List`) switches between bare changes and detailed entries.
   In the same directory, `rgw_datalog.cc` (`rgw_data_change::dump` and

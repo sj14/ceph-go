@@ -16,7 +16,7 @@ func TestRGWSetBucketQuota(t *testing.T) {
 		UID:        "ceph-go-admin",
 		Name:       fixture.name,
 		Enabled:    new(true),
-		MaxSizeKB:  new(int64(64)),
+		MaxSize:    new(int64(64*1024 + 1)),
 		MaxObjects: new(int64(9)),
 	}); err != nil {
 		t.Fatal(err)
@@ -25,7 +25,19 @@ func TestRGWSetBucketQuota(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bucket.Quota.Enabled || bucket.Quota.MaxSize != 64*1024 || bucket.Quota.MaxObjects != 9 {
+	if !bucket.Quota.Enabled || bucket.Quota.MaxSize != 64*1024+1 || bucket.Quota.MaxObjects != 9 {
 		t.Fatalf("updated Admin Ops bucket quota = %#v", bucket.Quota)
+	}
+	if err := client.SetBucketQuota(ctx, rgw.SetBucketQuotaRequest{
+		UID: "ceph-go-admin", Name: fixture.name, Enabled: new(false),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	bucket, err = client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bucket.Quota.Enabled || bucket.Quota.MaxSize != 64*1024+1 || bucket.Quota.MaxObjects != 9 {
+		t.Fatalf("partially updated Admin Ops bucket quota = %#v", bucket.Quota)
 	}
 }

@@ -103,10 +103,11 @@ error before sending a request.
 - [x] `SetAccountQuota` — `PUT /admin/account?quota`
 - [x] `DeleteAccount` — `DELETE /admin/account`
 
-`SetAccountQuotaRequest` uses optional `int32` limits; `MaxSize` is in bytes
-and there is no KiB parameter. Stored quotas
-and their response models still use `int64`. User and named-bucket quota setter
-requests use optional `int64` limits and also support `MaxSizeKB`.
+All quota setter requests express `MaxSize` in bytes. `SetAccountQuotaRequest`
+uses optional `int32` limits; user and named-bucket requests use optional `int64`
+limits. Nil settings preserve stored values, and negative limits mean unlimited.
+For example, `MaxSize: new(int64(10 * 1024))` sets 10 KiB for a user or bucket.
+Stored quotas use `int64`; the response's `MaxSizeKB` is a derived KiB value.
 
 ### Usage and gateway information
 

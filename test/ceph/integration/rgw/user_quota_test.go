@@ -32,7 +32,7 @@ func TestRGWSetUserQuota(t *testing.T) {
 		UID:        fixture.uid,
 		Scope:      rgw.QuotaScopeUser,
 		Enabled:    new(true),
-		MaxSizeKB:  new(int64(128)),
+		MaxSize:    new(int64(128*1024 + 1)),
 		MaxObjects: new(int64(17)),
 	}); err != nil {
 		t.Fatal(err)
@@ -41,8 +41,20 @@ func TestRGWSetUserQuota(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !quota.Enabled || quota.MaxSize != 128*1024 || quota.MaxObjects != 17 {
+	if !quota.Enabled || quota.MaxSize != 128*1024+1 || quota.MaxObjects != 17 {
 		t.Fatalf("updated Admin Ops user quota = %#v", quota)
+	}
+	if err := client.SetUserQuota(ctx, rgw.SetUserQuotaRequest{
+		UID: fixture.uid, Scope: rgw.QuotaScopeUser, Enabled: new(false),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	quota, err = client.GetUserQuota(ctx, rgw.GetUserQuotaRequest{UID: fixture.uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if quota.Enabled || quota.MaxSize != 128*1024+1 || quota.MaxObjects != 17 {
+		t.Fatalf("partially updated Admin Ops user quota = %#v", quota)
 	}
 }
 

@@ -87,16 +87,19 @@ func (client *Client) getUserQuota(ctx context.Context, input GetUserQuotaReques
 	return nil
 }
 
+// SetUserQuotaRequest updates an aggregate user or per-bucket quota. MaxSize is
+// in bytes; nil settings preserve stored values, and negative limits are unlimited.
 type SetUserQuotaRequest struct {
 	UID        string
 	Scope      QuotaScope
 	MaxObjects *int64
 	MaxSize    *int64
-	MaxSizeKB  *int64
 	Enabled    *bool
 }
 
 // SetUserQuota updates a user or bucket quota through PUT /admin/user?quota.
+// Verified against Ceph v20.2.4's src/rgw/driver/rados/rgw_rest_user.cc
+// (RGWOp_Quota_Set): max-size is parsed as an int64 byte count.
 func (client *Client) SetUserQuota(ctx context.Context, input SetUserQuotaRequest) error {
 	if ctx == nil {
 		return errors.New("rgw: context must not be nil")
@@ -114,7 +117,6 @@ func (client *Client) SetUserQuota(ctx context.Context, input SetUserQuotaReques
 	}
 	setInt64(query, "max-objects", input.MaxObjects)
 	setInt64(query, "max-size", input.MaxSize)
-	setInt64(query, "max-size-kb", input.MaxSizeKB)
 	setBool(query, "enabled", input.Enabled)
 	_, _, err := client.userRawRequest(ctx, http.MethodPut, query)
 	return err
