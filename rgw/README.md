@@ -32,9 +32,8 @@ timeout.
 API failures return `*rgw.APIError`. Use `errors.Is(err, rgw.ErrKeyExists)`
 (or another `ErrorCode` constant) to match Ceph's exact wire code. Constants
 cover user/key/capability conflicts and validation, authentication, missing
-resources, locks, limits, and common server errors. They are verified against
-Ceph v20.2.4's `src/rgw/rgw_common.cc` S3 error mapping, which Admin Ops uses;
-unknown codes remain available through `APIError.Code`.
+resources, locks, limits, and common server errors. Unknown codes remain
+available through `APIError.Code`.
 
 ## RGW Admin Ops status
 
@@ -68,9 +67,6 @@ legacy and generation-aware data-log notification formats.
 internally. Both return the user's complete collection of that key type after
 creation, including existing keys. Swift creation requires a subuser and has
 no `AccessKey` field because Ceph derives the identity from the user and subuser.
-These contracts are verified in Ceph v20.2.4's
-`src/rgw/driver/rados/rgw_rest_user.cc` (`RGWOp_Key_Create`) and
-`rgw_user.cc` (`RGWUserAdminOp_Key::create` and `RGWAccessKeyPool::generate_key`).
 The former `CreateKey`, `CreateKeyRequest`, and `CreatedKeys` API is removed;
 use the method and request matching the credential type.
 
@@ -93,14 +89,9 @@ of an existing bucket; bucket creation remains an S3 operation.
 
 Both listing methods use `ListBucketsRequest.UID` to filter by user; an empty
 UID lists all buckets. For an account member, Ceph lists that account's buckets.
-Ceph v20.2.4 does not parse `account-id` on the bucket-list REST endpoint, so
-the request has no `AccountID` filter. This is verified in
-`src/rgw/driver/rados/rgw_rest_bucket.cc` and `rgw_bucket.cc`.
 
-`ListBuckets`
-always fetches details and statistics; use `ListBucketNames` for the cheaper
-name-only listing. The request has no `Stats` flag, and name-only responses are
-never converted into partially populated `Bucket` values.
+`ListBuckets` fetches details and statistics; use `ListBucketNames` for the
+cheaper name-only listing.
 
 ### Accounts
 
@@ -110,8 +101,8 @@ never converted into partially populated `Bucket` values.
 - [x] `SetAccountQuota` — `PUT /admin/account?quota`
 - [x] `DeleteAccount` — `DELETE /admin/account`
 
-`SetAccountQuotaRequest` uses optional `int32` limits to match Ceph v20.2.4's
-REST parser; `MaxSize` is in bytes and there is no KiB parameter. Stored quotas
+`SetAccountQuotaRequest` uses optional `int32` limits; `MaxSize` is in bytes
+and there is no KiB parameter. Stored quotas
 and their response models still use `int64`. User and named-bucket quota setter
 requests use optional `int64` limits and also support `MaxSizeKB`.
 
@@ -130,6 +121,7 @@ requests use optional `int64` limits and also support `MaxSizeKB`.
 - [x] `DeleteMetadata` — `DELETE /admin/metadata[/<section>]?key=...`
 
 `MetadataSection` provides constants for Ceph v20.2.4's registered sections:
+
 - `account`
 - `bucket`
 - `bucket.instance`
@@ -141,8 +133,6 @@ requests use optional `int64` limits and also support `MaxSizeKB`.
 
 The empty section lists the metadata root. Explicit conversions such
 as `MetadataSection("new-section")` allow names from other Ceph versions.
-The registration and wire names are verified in
-`src/rgw/driver/rados/rgw_service.cc` and the handlers listed in `metadata.go`.
 
 Metadata writes and deletes require `metadata=write`. `PutMetadata` sends the
 same key/ver/mtime/data envelope returned by `GetMetadata` and decodes the
@@ -190,25 +180,13 @@ filters. `ListDataLogEntries` returns `DataLogEntryList` with log IDs, log
 timestamps, and nested changes; `ListDataLogChanges` returns `DataLogChangeList`
 with bare changes. Both pages retain `Marker`, `LastUpdate`, and `Truncated`.
 When `Truncated` is true, pass the page's opaque `Marker` to the next request.
-The former `ExtraInfo` flag and decoder accepting both entry formats are
-removed. These shapes are verified in Ceph v20.2.4's
-`src/rgw/driver/rados/rgw_rest_log.cc` (`RGWOp_DATALog_List`) and
-`rgw_datalog.cc` (`rgw_data_change::dump` and `rgw_data_change_log_entry::dump`).
+The former `ExtraInfo` flag is removed; select the method for the desired format.
 
 Trims remove log entries, retaining the underlying resources. Metadata and
 data trims use a bounding `Marker`; bucket-index trims use `StartMarker`,
 `EndMarker`, and an optional `Generation`. Bucket-index trimming requires
 `BucketInstance` in v20.2.4, as do its log reads. Ceph v20.2.4 returns HTTP 500
-`UnknownError` when a metadata trim range is empty (`cls_log_trim` returns
-`ENODATA`); the client preserves that error.
-
-The mutation contracts were verified against v20.2.4's
-`src/rgw/rgw_rest_metadata.cc`/`.h`,
-`src/rgw/driver/rados/rgw_rest_log.cc`/`.h`, `src/rgw/rgw_metadata.cc`,
-`src/rgw/driver/rados/rgw_metadata.cc`, `src/rgw/driver/rados/rgw_user.cc`,
-`src/rgw/services/svc_cls.cc`, `src/rgw/services/svc_bilog_rados.cc`,
-`src/rgw/driver/rados/rgw_datalog.cc`,
-`src/rgw/driver/rados/rgw_datalog_notify.cc`, and `src/cls/log/cls_log.cc`.
+`UnknownError` when a metadata trim range is empty; the client preserves that error.
 
 ### Zone, realm, and period
 
@@ -232,20 +210,7 @@ Its realm must match the serving gateway's realm. `PushPeriod` sends an
 existing period to a non-master zone. `CommitPeriod` sends a proposed period
 to its master zone, with an empty ID, the current period as predecessor, and
 the next realm epoch. Ceph returns the resulting period and can reload the
-realm after the response. These contracts were verified in
-`src/rgw/driver/rados/rgw_rest_realm.cc`, `src/rgw/rgw_period.cc`, and
-`src/rgw/driver/rados/rgw_period.cc`.
-
-Verified against Ceph **v20.2.4**, selected from the `releases` section of
-[`main/doc/releases/releases.yml`](https://github.com/ceph/ceph/blob/main/doc/releases/releases.yml)
-and confirmed `stable` by the tag's
-[`src/ceph_release`](https://github.com/ceph/ceph/blob/v20.2.4/src/ceph_release).
-The authoritative handlers are `src/rgw/rgw_rest_config.cc`/`.h` and
-`src/rgw/driver/rados/rgw_rest_realm.cc`; model formatters are in
-`src/rgw/rgw_zone.cc`, `src/rgw/rgw_realm.cc`, `src/rgw/rgw_period.cc`, and
-`src/rgw/rgw_sync_policy.cc`. Resource registration is in
-`src/rgw/driver/rados/rgw_sal_rados.cc`. Ceph's multisite tests in
-`src/test/rgw/rgw_multi` exercise realm and period configuration.
+realm after the response.
 
 ### Rate limits
 
@@ -260,7 +225,5 @@ global reads accept no target. `GlobalRateLimitConfiguration` always contains
 the bucket, user, and anonymous defaults as values. The user and bucket methods
 return their stored configuration, without merging global defaults; an
 unconfigured resource returns zero limits with `Enabled` false.
-These response forms are verified in Ceph v20.2.4's
-`src/rgw/rgw_rest_ratelimit.cc` (`RGWOp_Ratelimit_Info::execute`).
 The former `GetRateLimit`, `GetRateLimitRequest`, and `RateLimitConfiguration`
 API is removed; select the getter for the intended target.

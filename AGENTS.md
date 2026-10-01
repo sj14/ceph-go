@@ -15,8 +15,11 @@ separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
 - For direct Admin Ops endpoints, inspect RGW's REST handler and method
   dispatch, parameter parsing, underlying admin operation, response formatter,
   authentication requirements, and tests when available.
-- Record the verified Ceph release and relevant source files in code comments, tests, or the README so that later updates can be compared deliberately.
+- Record the verified Ceph release and relevant source files in code comments, tests, or this file so that later updates can be compared deliberately.
 - Treat Ceph's release source code as authoritative when it differs from generated or published documentation.
+- Keep READMEs focused on usage, observable behavior, and migration guidance.
+  Record source-file inventories, formatter details, and verification rationale
+  in code comments, tests, or this file rather than expanding user documentation.
 
 ## Go implementation
 
@@ -84,3 +87,63 @@ separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
   before promoting it to the moving `main` tag.
 - Keep local Compose usage able to build the image directly when
   `CEPH_TEST_IMAGE` is not set.
+
+## RGW source verification notes
+
+These notes record the source checks behind the current RGW API. Recheck the
+latest stable release using the procedure above before changing an endpoint.
+The verified baseline is Ceph **v20.2.4**, selected from the `releases` section of
+[`main/doc/releases/releases.yml`](https://github.com/ceph/ceph/blob/main/doc/releases/releases.yml)
+and confirmed `stable` by the tag's
+[`src/ceph_release`](https://github.com/ceph/ceph/blob/v20.2.4/src/ceph_release).
+All source paths below refer to that tag.
+
+- Error codes: `src/rgw/rgw_common.cc` contains the S3 error mapping used by
+  Admin Ops; retain unknown wire codes through `APIError.Code`.
+- Key creation: `src/rgw/driver/rados/rgw_rest_user.cc` (`RGWOp_Key_Create`)
+  parses the request. In the same directory, `rgw_user.cc`
+  (`RGWUserAdminOp_Key::create`) returns the complete collection of the selected
+  key type, and `RGWAccessKeyPool::generate_key` derives the Swift identity from
+  the user and subuser. Keep separate typed S3 and Swift methods and requests.
+- Bucket listing: `src/rgw/driver/rados/rgw_rest_bucket.cc`
+  (`RGWOp_Bucket_Info::execute`) does not parse an `account-id` listing filter.
+  `rgw_bucket.cc` in the same directory resolves account membership from UID.
+  Do not reintroduce an ineffective `AccountID` filter or a public `Stats` flag;
+  the name-only and detailed methods must retain fixed return types.
+- Metadata sections: registration and wire names are in
+  `src/rgw/driver/rados/rgw_service.cc` and the handlers listed in
+  `rgw/metadata.go`.
+- Account quotas: the REST parser uses `int32` limits while stored quota
+  models use `int64`; preserve the distinct request representation.
+- Data-log listing: `src/rgw/driver/rados/rgw_rest_log.cc`
+  (`RGWOp_DATALog_List`) switches between bare changes and detailed entries.
+  In the same directory, `rgw_datalog.cc` (`rgw_data_change::dump` and
+  `rgw_data_change_log_entry::dump`) defines the two wire shapes. Keep the
+  `extra-info` parameter internal to the separate methods. Do not normalize
+  bare changes into entries with empty log metadata.
+- Rate-limit reads: `src/rgw/rgw_rest_ratelimit.cc`
+  (`RGWOp_Ratelimit_Info::execute`) returns one scoped limit or all three global
+  defaults. Keep separate getters and target requests. Global models use value
+  fields and are shared with Dashboard through its type alias.
+
+### Metadata and log mutations
+
+The mutation contracts were verified against v20.2.4's
+`src/rgw/rgw_rest_metadata.cc`/`.h`,
+`src/rgw/driver/rados/rgw_rest_log.cc`/`.h`, `src/rgw/rgw_metadata.cc`,
+`src/rgw/driver/rados/rgw_metadata.cc`, `src/rgw/driver/rados/rgw_user.cc`,
+`src/rgw/services/svc_cls.cc`, `src/rgw/services/svc_bilog_rados.cc`,
+`src/rgw/driver/rados/rgw_datalog.cc`,
+`src/rgw/driver/rados/rgw_datalog_notify.cc`, and `src/cls/log/cls_log.cc`.
+An empty metadata trim range returns `ENODATA` from `cls_log_trim`, which
+Admin Ops maps to HTTP 500 `UnknownError`; preserve this server error.
+
+### Zone, realm, and period
+
+The authoritative handlers are `src/rgw/rgw_rest_config.cc`/`.h` and
+`src/rgw/driver/rados/rgw_rest_realm.cc`; model formatters are in
+`src/rgw/rgw_zone.cc`, `src/rgw/rgw_realm.cc`, `src/rgw/rgw_period.cc`, and
+`src/rgw/rgw_sync_policy.cc`. Resource registration is in
+`src/rgw/driver/rados/rgw_sal_rados.cc`. Ceph's multisite tests in
+`src/test/rgw/rgw_multi` exercise realm and period configuration.
+Period operations also use `src/rgw/driver/rados/rgw_period.cc`.
