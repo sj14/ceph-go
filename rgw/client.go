@@ -263,13 +263,58 @@ func setInt64(query url.Values, name string, value *int64) {
 // available through APIError.Code and can be converted to ErrorCode by callers.
 type ErrorCode string
 
+// Verified against Ceph v20.2.4: src/rgw/rgw_common.cc
+// (rgw_http_s3_errors and set_req_state_err). User/key/capability failures
+// originate in src/rgw/driver/rados/rgw_user.cc; Admin Ops uses the S3 mapping.
 const (
-	ErrNoSuchUser      ErrorCode = "NoSuchUser"
-	ErrNoSuchBucket    ErrorCode = "NoSuchBucket"
-	ErrUserExists      ErrorCode = "UserAlreadyExists"
-	ErrAccountExists   ErrorCode = "AccountAlreadyExists"
-	ErrInvalidArgument ErrorCode = "InvalidArgument"
-	ErrAccessDenied    ErrorCode = "AccessDenied"
+	ErrNoSuchUser         ErrorCode = "NoSuchUser"
+	ErrNoSuchSubUser      ErrorCode = "NoSuchSubUser"
+	ErrNoSuchBucket       ErrorCode = "NoSuchBucket"
+	ErrNoSuchKey          ErrorCode = "NoSuchKey"
+	ErrNoSuchEntity       ErrorCode = "NoSuchEntity"
+	ErrNoSuchBucketPolicy ErrorCode = "NoSuchBucketPolicy"
+	ErrNotFound           ErrorCode = "NotFound"
+
+	ErrUserExists             ErrorCode = "UserAlreadyExists"
+	ErrAccountExists          ErrorCode = "AccountAlreadyExists"
+	ErrBucketExists           ErrorCode = "BucketAlreadyExists"
+	ErrEmailExists            ErrorCode = "EmailExists"
+	ErrKeyExists              ErrorCode = "KeyExists"
+	ErrBucketNotEmpty         ErrorCode = "BucketNotEmpty"
+	ErrOperationAborted       ErrorCode = "OperationAborted"
+	ErrConcurrentModification ErrorCode = "ConcurrentModification"
+	ErrPreconditionFailed     ErrorCode = "PreconditionFailed"
+	ErrLocked                 ErrorCode = "Locked"
+
+	ErrInvalidArgument         ErrorCode = "InvalidArgument"
+	ErrInvalidRequest          ErrorCode = "InvalidRequest"
+	ErrInvalidBucketName       ErrorCode = "InvalidBucketName"
+	ErrInvalidObjectName       ErrorCode = "InvalidObjectName"
+	ErrInvalidTenantName       ErrorCode = "InvalidTenantName"
+	ErrInvalidSecretKey        ErrorCode = "InvalidSecretKey"
+	ErrInvalidKeyType          ErrorCode = "InvalidKeyType"
+	ErrInvalidCapability       ErrorCode = "InvalidCapability"
+	ErrMalformedPolicyDocument ErrorCode = "MalformedPolicyDocument"
+	ErrMissingContentLength    ErrorCode = "MissingContentLength"
+	ErrMethodNotAllowed        ErrorCode = "MethodNotAllowed"
+
+	ErrAccessDenied          ErrorCode = "AccessDenied"
+	ErrAuthorizationError    ErrorCode = "AuthorizationError"
+	ErrSignatureDoesNotMatch ErrorCode = "SignatureDoesNotMatch"
+	ErrInvalidAccessKeyID    ErrorCode = "InvalidAccessKeyId"
+	ErrUserSuspended         ErrorCode = "UserSuspended"
+	ErrRequestTimeTooSkewed  ErrorCode = "RequestTimeTooSkewed"
+
+	ErrRequestTimeout       ErrorCode = "RequestTimeout"
+	ErrLimitExceeded        ErrorCode = "LimitExceeded"
+	ErrQuotaExceeded        ErrorCode = "QuotaExceeded"
+	ErrTooManyBuckets       ErrorCode = "TooManyBuckets"
+	ErrSlowDown             ErrorCode = "SlowDown"
+	ErrInsufficientCapacity ErrorCode = "InsufficientCapacity"
+	ErrInternalError        ErrorCode = "InternalError"
+	ErrUnknownError         ErrorCode = "UnknownError"
+	ErrNotImplemented       ErrorCode = "NotImplemented"
+	ErrServiceUnavailable   ErrorCode = "ServiceUnavailable"
 )
 
 func (code ErrorCode) Error() string {

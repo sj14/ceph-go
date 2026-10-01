@@ -29,6 +29,13 @@ changed with `rgw.WithAdminPath`. A preconfigured `http.Client` can be supplied
 with `WithHTTPClient`; otherwise the client uses a 30-second total request
 timeout.
 
+API failures return `*rgw.APIError`. Use `errors.Is(err, rgw.ErrKeyExists)`
+(or another `ErrorCode` constant) to match Ceph's exact wire code. Constants
+cover user/key/capability conflicts and validation, authentication, missing
+resources, locks, limits, and common server errors. They are verified against
+Ceph v20.2.4's `src/rgw/rgw_common.cc` S3 error mapping, which Admin Ops uses;
+unknown codes remain available through `APIError.Code`.
+
 ## RGW Admin Ops status
 
 This checklist covers the direct Admin Ops resources registered by Ceph

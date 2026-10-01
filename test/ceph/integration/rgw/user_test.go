@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -107,5 +108,29 @@ func TestRGWDeleteUser(t *testing.T) {
 	_, err := client.GetUser(ctx, rgw.GetUserRequest{UID: fixture.uid})
 	if !errors.Is(err, rgw.ErrNoSuchUser) {
 		t.Fatalf("GetUser after Admin Ops delete error = %v, want NoSuchUser", err)
+	}
+}
+
+func TestRGWUpdateUserEmailConflict(t *testing.T) {
+	t.Parallel()
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	owner, _ := createRGWUserFixture(t, client, ctx)
+	other, _ := createRGWUserFixture(t, client, ctx)
+	email := uniqueResourceName(t, "ceph-go-email") + "@example.invalid"
+	if _, err := client.UpdateUser(ctx, rgw.UpdateUserRequest{UID: owner.uid, Email: &email}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := client.UpdateUser(ctx, rgw.UpdateUserRequest{UID: other.uid, Email: &email})
+	if !errors.Is(err, rgw.ErrEmailExists) {
+		t.Fatalf("duplicate email error = %v, want EmailExists", err)
+	}
+	requireRGWAPIStatus(t, err, http.StatusConflict)
+	user, err := client.GetUser(ctx, rgw.GetUserRequest{UID: other.uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user.Email != "" {
+		t.Fatalf("rejected duplicate email changed user email: %q", user.Email)
 	}
 }

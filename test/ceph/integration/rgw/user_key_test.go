@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/sj14/ceph-go/rgw"
@@ -54,5 +56,34 @@ func TestRGWDeleteKey(t *testing.T) {
 	}
 	if len(user.Keys) != 0 {
 		t.Fatalf("keys after Admin Ops delete = %#v", user.Keys)
+	}
+}
+
+func TestRGWCreateKeyConflict(t *testing.T) {
+	t.Parallel()
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	owner, _ := createRGWUserFixture(t, client, ctx)
+	other, _ := createRGWUserFixture(t, client, ctx)
+	request := rgw.CreateKeyRequest{
+		UID: owner.uid, KeyType: rgw.UserKeyTypeS3,
+		AccessKey: uniqueResourceName(t, "RGWGOADMINKEY"),
+		SecretKey: "ceph-go-admin-integration-secret", GenerateKey: new(false),
+	}
+	if _, err := client.CreateKey(ctx, request); err != nil {
+		t.Fatal(err)
+	}
+	request.UID = other.uid
+	_, err := client.CreateKey(ctx, request)
+	if !errors.Is(err, rgw.ErrKeyExists) {
+		t.Fatalf("duplicate access key error = %v, want KeyExists", err)
+	}
+	requireRGWAPIStatus(t, err, http.StatusConflict)
+	user, err := client.GetUser(ctx, rgw.GetUserRequest{UID: other.uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(user.Keys) != 0 {
+		t.Fatalf("rejected duplicate key changed user keys: %#v", user.Keys)
 	}
 }
