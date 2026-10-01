@@ -25,49 +25,66 @@ type UserQuotas struct {
 	User   Quota `json:"user_quota"`
 }
 
+// GetUserQuotaRequest identifies the user whose quotas should be read.
+// All three quota getters use the same identity and have fixed response shapes.
 type GetUserQuotaRequest struct {
-	UID   string
-	Scope QuotaScope
+	UID string
 }
 
-// GetUserQuota gets both quotas, or one selected quota, through
-// GET /admin/user?quota. A selected quota is normalized into the matching
-// field of UserQuotas.
-func (client *Client) GetUserQuota(ctx context.Context, input GetUserQuotaRequest) (UserQuotas, error) {
+// GetUserQuotas retrieves both user and per-bucket quotas through
+// GET /admin/user?quota.
+//
+// Verified against Ceph v20.2.4: src/rgw/driver/rados/rgw_rest_user.cc
+// (RGWOp_Quota_Info and UserQuotas) and src/rgw/rgw_quota.cc (RGWQuotaInfo::dump).
+func (client *Client) GetUserQuotas(ctx context.Context, input GetUserQuotaRequest) (UserQuotas, error) {
+	var quotas UserQuotas
+	if err := client.getUserQuota(ctx, input, "", &quotas); err != nil {
+		return UserQuotas{}, err
+	}
+	return quotas, nil
+}
+
+// GetUserQuota retrieves the user's aggregate quota through
+// GET /admin/user?quota&quota-type=user.
+func (client *Client) GetUserQuota(ctx context.Context, input GetUserQuotaRequest) (Quota, error) {
+	var quota Quota
+	if err := client.getUserQuota(ctx, input, QuotaScopeUser, &quota); err != nil {
+		return Quota{}, err
+	}
+	return quota, nil
+}
+
+// GetUserBucketQuota retrieves the user's per-bucket quota through
+// GET /admin/user?quota&quota-type=bucket. This is distinct from the quota
+// configured on a particular bucket, which is returned by GetBucket.
+func (client *Client) GetUserBucketQuota(ctx context.Context, input GetUserQuotaRequest) (Quota, error) {
+	var quota Quota
+	if err := client.getUserQuota(ctx, input, QuotaScopeBucket, &quota); err != nil {
+		return Quota{}, err
+	}
+	return quota, nil
+}
+
+func (client *Client) getUserQuota(ctx context.Context, input GetUserQuotaRequest, scope QuotaScope, result any) error {
 	if ctx == nil {
-		return UserQuotas{}, errors.New("rgw: context must not be nil")
+		return errors.New("rgw: context must not be nil")
 	}
 	if strings.TrimSpace(input.UID) == "" {
-		return UserQuotas{}, errors.New("rgw: user UID must not be empty")
-	}
-	if input.Scope != "" && input.Scope != QuotaScopeUser && input.Scope != QuotaScopeBucket {
-		return UserQuotas{}, errors.New("rgw: quota scope must be empty, user, or bucket")
+		return errors.New("rgw: user UID must not be empty")
 	}
 	query := url.Values{
 		"quota": {""},
 		"uid":   {input.UID},
 	}
-	setString(query, "quota-type", string(input.Scope))
+	setString(query, "quota-type", string(scope))
 	body, request, err := client.userRawRequest(ctx, http.MethodGet, query)
 	if err != nil {
-		return UserQuotas{}, err
+		return err
 	}
-	var quotas UserQuotas
-	if input.Scope == "" {
-		err = json.Unmarshal(body, &quotas)
-	} else {
-		var quota Quota
-		err = json.Unmarshal(body, &quota)
-		if input.Scope == QuotaScopeUser {
-			quotas.User = quota
-		} else {
-			quotas.Bucket = quota
-		}
+	if err := json.Unmarshal(body, result); err != nil {
+		return fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
 	}
-	if err != nil {
-		return UserQuotas{}, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
-	}
-	return quotas, nil
+	return nil
 }
 
 type SetUserQuotaRequest struct {

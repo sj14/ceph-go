@@ -253,6 +253,12 @@ func setBool(query url.Values, name string, value *bool) {
 	}
 }
 
+func setInt32(query url.Values, name string, value *int32) {
+	if value != nil {
+		query.Set(name, strconv.FormatInt(int64(*value), 10))
+	}
+}
+
 func setInt64(query url.Values, name string, value *int64) {
 	if value != nil {
 		query.Set(name, strconv.FormatInt(*value, 10))

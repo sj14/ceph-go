@@ -43,8 +43,8 @@ type User struct {
 	DefaultPlacement    string           `json:"default_placement"`
 	DefaultStorageClass string           `json:"default_storage_class"`
 	PlacementTags       []string         `json:"placement_tags"`
-	BucketQuota         UserQuota        `json:"bucket_quota"`
-	Quota               UserQuota        `json:"user_quota"`
+	BucketQuota         Quota            `json:"bucket_quota"`
+	Quota               Quota            `json:"user_quota"`
 	TempURLKeys         []UserTempURLKey `json:"temp_url_keys"`
 	Type                string           `json:"type"`
 	MFAIDs              []string         `json:"mfa_ids"`
@@ -86,16 +86,6 @@ type UserSwiftKey struct {
 type UserCapability struct {
 	Type       UserCapabilityType       `json:"type"`
 	Permission UserCapabilityPermission `json:"perm"`
-}
-
-// UserQuota contains either the user-level or bucket-level quota returned for
-// an RGW user.
-type UserQuota struct {
-	Enabled    bool  `json:"enabled"`
-	CheckOnRaw bool  `json:"check_on_raw"`
-	MaxSize    int64 `json:"max_size"`
-	MaxSizeKB  int64 `json:"max_size_kb"`
-	MaxObjects int64 `json:"max_objects"`
 }
 
 // UserTempURLKey is one indexed Swift temporary URL key.

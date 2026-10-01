@@ -97,7 +97,7 @@ type Bucket struct {
 	CreationTime         string                  `json:"creation_time"`
 	MaxMarker            string                  `json:"max_marker"`
 	Usage                map[string]StorageStats `json:"usage"`
-	Quota                BucketQuota             `json:"bucket_quota"`
+	Quota                Quota                   `json:"bucket_quota"`
 	ReadTracker          int64                   `json:"read_tracker"`
 	Encryption           BucketEncryptionStatus  `json:"encryption"`
 	Versioning           BucketVersioningState   `json:"versioning"`
@@ -118,15 +118,6 @@ type BucketExplicitPlacement struct {
 	DataPool      string `json:"data_pool"`
 	DataExtraPool string `json:"data_extra_pool"`
 	IndexPool     string `json:"index_pool"`
-}
-
-// BucketQuota contains the bucket-level RGW quota.
-type BucketQuota struct {
-	Enabled    bool  `json:"enabled"`
-	CheckOnRaw bool  `json:"check_on_raw"`
-	MaxSize    int64 `json:"max_size"`
-	MaxSizeKB  int64 `json:"max_size_kb"`
-	MaxObjects int64 `json:"max_objects"`
 }
 
 // BucketReplication summarizes both S3 replication rules and RGW sync policy.

@@ -13,8 +13,8 @@ import (
 
 // UserQuotaConfiguration contains both quota scopes returned by Ceph.
 type UserQuotaConfiguration struct {
-	User   UserQuota `json:"user_quota"`
-	Bucket UserQuota `json:"bucket_quota"`
+	User   Quota `json:"user_quota"`
+	Bucket Quota `json:"bucket_quota"`
 }
 
 // GetUserQuotaRequest identifies the RGW user whose quotas should be read.

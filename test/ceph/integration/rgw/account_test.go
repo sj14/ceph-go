@@ -96,7 +96,7 @@ func TestRGWSetAccountQuota(t *testing.T) {
 	fixture, _ := createRGWAccountFixture(t, client, ctx)
 	account, err := client.SetAccountQuota(ctx, rgw.SetAccountQuotaRequest{
 		ID: fixture.id, Scope: rgw.QuotaScopeAccount,
-		MaxSize: new(int64(8192)), MaxObjects: new(int64(8)), Enabled: new(true),
+		MaxSize: new(int32(8192)), MaxObjects: new(int32(8)), Enabled: new(true),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -108,7 +108,7 @@ func TestRGWSetAccountQuota(t *testing.T) {
 
 	account, err = client.SetAccountQuota(ctx, rgw.SetAccountQuotaRequest{
 		ID: fixture.id, Scope: rgw.QuotaScopeBucket,
-		MaxSize: new(int64(4096)), MaxObjects: new(int64(7)), Enabled: new(true),
+		MaxSize: new(int32(4096)), MaxObjects: new(int32(7)), Enabled: new(true),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -116,6 +116,27 @@ func TestRGWSetAccountQuota(t *testing.T) {
 	if account.ID != fixture.id || !account.BucketQuota.Enabled ||
 		account.BucketQuota.MaxSize != 4096 || account.BucketQuota.MaxObjects != 7 {
 		t.Fatalf("account with updated Admin Ops bucket quota = %#v", account)
+	}
+	// Exercise the REST parser's signed 32-bit boundary and unlimited value.
+	account, err = client.SetAccountQuota(ctx, rgw.SetAccountQuotaRequest{
+		ID: fixture.id, Scope: rgw.QuotaScopeAccount,
+		MaxSize: new(int32(2147483647)), MaxObjects: new(int32(-1)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if account.Quota.MaxSize != 2147483647 || account.Quota.MaxObjects != -1 || !account.Quota.Enabled {
+		t.Fatalf("account quota at REST limits = %#v", account.Quota)
+	}
+	account, err = client.SetAccountQuota(ctx, rgw.SetAccountQuotaRequest{
+		ID: fixture.id, Scope: rgw.QuotaScopeAccount,
+		MaxObjects: new(int32(0)), Enabled: new(false),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if account.Quota.MaxSize != 2147483647 || account.Quota.MaxObjects != 0 || account.Quota.Enabled {
+		t.Fatalf("account quota with explicit zero/false and omitted size = %#v", account.Quota)
 	}
 }
 

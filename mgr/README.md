@@ -137,6 +137,8 @@ is explicit.
 - [x] `DeleteSwiftKey` — `DELETE /api/rgw/user/{uid}/key`
 - [x] `GetUserQuota` — `GET /api/rgw/user/{uid}/quota`
 - [x] `UpdateUserQuota` — `PUT /api/rgw/user/{uid}/quota`
+
+User and bucket quota responses share the `Quota` model (`RGWQuotaInfo`).
 - [x] `CreateSubuser` — `POST /api/rgw/user/{uid}/subuser`
 - [x] `DeleteSubuser` — `DELETE /api/rgw/user/{uid}/subuser/{subuser}`
 - [x] `GetGlobalUserRateLimit` — `GET /api/rgw/user/ratelimit`

@@ -105,12 +105,14 @@ func (client *Client) UpdateAccount(ctx context.Context, input UpdateAccountRequ
 }
 
 // SetAccountQuotaRequest modifies either the aggregate account quota or the
-// per-bucket quota inherited by buckets in the account.
+// per-bucket quota inherited by buckets in the account. Limits use int32 because
+// Ceph v20.2.4's src/rgw/rgw_rest_account.cc parses both with get_int32, even
+// though the stored RGWQuotaInfo and response fields use int64. MaxSize is bytes.
 type SetAccountQuotaRequest struct {
 	ID         string
 	Scope      QuotaScope
-	MaxSize    *int64
-	MaxObjects *int64
+	MaxSize    *int32
+	MaxObjects *int32
 	Enabled    *bool
 }
 
@@ -131,8 +133,8 @@ func (client *Client) SetAccountQuota(ctx context.Context, input SetAccountQuota
 		"id":         {input.ID},
 		"quota-type": {string(input.Scope)},
 	}
-	setInt64(query, "max-size", input.MaxSize)
-	setInt64(query, "max-objects", input.MaxObjects)
+	setInt32(query, "max-size", input.MaxSize)
+	setInt32(query, "max-objects", input.MaxObjects)
 	setBool(query, "enabled", input.Enabled)
 	return client.accountRequest(ctx, http.MethodPut, query)
 }

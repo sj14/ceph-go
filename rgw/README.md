@@ -48,7 +48,9 @@ legacy and generation-aware data-log notification formats.
 
 - [x] `ListUsers` — `GET /admin/user?list`
 - [x] `GetUser` — `GET /admin/user`
-- [x] `GetUserQuota` — `GET /admin/user?quota`
+- [x] `GetUserQuotas` — `GET /admin/user?quota`, returns both scopes
+- [x] `GetUserQuota` — `GET /admin/user?quota&quota-type=user`, returns `Quota`
+- [x] `GetUserBucketQuota` — `GET /admin/user?quota&quota-type=bucket`, returns `Quota`
 - [x] `CreateUser` — `PUT /admin/user`
 - [x] `CreateSubuser` — `PUT /admin/user?subuser`
 - [x] `CreateKey` — `PUT /admin/user?key`
@@ -90,6 +92,11 @@ never converted into partially populated `Bucket` values.
 - [x] `UpdateAccount` — `PUT /admin/account`
 - [x] `SetAccountQuota` — `PUT /admin/account?quota`
 - [x] `DeleteAccount` — `DELETE /admin/account`
+
+`SetAccountQuotaRequest` uses optional `int32` limits to match Ceph v20.2.4's
+REST parser; `MaxSize` is in bytes and there is no KiB parameter. Stored quotas
+and their response models still use `int64`. User and named-bucket quota setter
+requests use optional `int64` limits and also support `MaxSizeKB`.
 
 ### Usage and gateway information
 

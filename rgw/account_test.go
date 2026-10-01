@@ -85,7 +85,7 @@ func TestAccountEndpoints(t *testing.T) {
 			call: func(ctx context.Context, client *Client) error {
 				_, err := client.SetAccountQuota(ctx, SetAccountQuotaRequest{
 					ID: "RGW00000000000000001", Scope: QuotaScopeBucket,
-					MaxSize: new(int64(1024)), MaxObjects: new(int64(7)), Enabled: new(true),
+					MaxSize: new(int32(1024)), MaxObjects: new(int32(7)), Enabled: new(true),
 				})
 				return err
 			},
