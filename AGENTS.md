@@ -125,6 +125,13 @@ All source paths below refer to that tag.
   (`RGWOp_Ratelimit_Info::execute`) returns one scoped limit or all three global
   defaults. Keep separate getters and target requests. Global models use value
   fields and are shared with Dashboard through its type alias.
+- Usage reads: `src/rgw/rgw_rest_usage.cc` (`RGWOp_Usage_Get`) parses the
+  `show-entries` and `show-summary` flags; `src/rgw/rgw_usage.cc`
+  (`RGWUsage::show`) omits the corresponding arrays when false. Keep these
+  flags internal: `GetUsage` requests both collections, `ListUsageEntries`
+  requests entries only, and `ListUsageSummaries` requests summaries only.
+  Reuse the filters in `GetUsageRequest` and return typed slices for individual
+  collections rather than a partially populated `Usage`.
 
 ### Metadata and log mutations
 

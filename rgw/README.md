@@ -110,7 +110,13 @@ requests use optional `int64` limits and also support `MaxSizeKB`.
 
 - [x] `GetGatewayInfo` — `GET /admin/info`
 - [x] `GetUsage` — `GET /admin/usage`
+- [x] `ListUsageEntries` — `GET /admin/usage`, returns `[]UsageEntry`
+- [x] `ListUsageSummaries` — `GET /admin/usage`, returns `[]UsageSummary`
 - [x] `TrimUsage` — `DELETE /admin/usage`
+
+`GetUsage` returns both entries and summaries. Use `ListUsageEntries` for
+detailed records or `ListUsageSummaries` for aggregate counters. All three
+share `GetUsageRequest` filters; `ShowEntries` and `ShowSummary` are removed.
 
 ### Metadata
 
