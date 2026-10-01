@@ -174,6 +174,19 @@ All source paths below refer to that tag.
   `RGWHTTPArgs::append` in `src/rgw/rgw_common.cc` registers only the first
   Admin Ops subresource: encode `policy` before `object` so object ACL reads
   reach the policy handler. SigV4 canonical query sorting permits this order.
+- Bucket index checks: `RGWOp_Check_Bucket_Index` in that REST source requires
+  `buckets=write` even with `fix=false`. `RGWBucketAdminOp::check_index` and
+  `RGWBucket::check_bad_index_multipart/check_object_index/check_index` in
+  `rgw_bucket.cc` remove invalid multipart index entries, reconcile object
+  entries, and rebuild index statistics when fixing. Separate `CheckBucketIndex`
+  (internal fix=false, check-objects=false) from `RepairBucketIndex` (fix=true),
+  with optional object reconciliation only on the repair request. Share the
+  check report: existing/calculated headers are captured before rebuilding.
+  `dump_bucket_index` emits repeated "object" keys inside an object; retain
+  nullable raw JSON rather than losing entries through map decoding. Integration
+  coverage must exercise both repair modes on healthy temporary buckets,
+  verify object preservation and subsequent consistent index headers, and
+  reject missing bucket names locally.
 - Metadata sections: registration and wire names are in
   `src/rgw/driver/rados/rgw_service.cc` and the handlers listed in
   `rgw/metadata.go`.

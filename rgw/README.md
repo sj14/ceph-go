@@ -92,6 +92,7 @@ Omitting `Access` returns a validation error before sending a request.
 - [x] `GetBucketACL` — `GET /admin/bucket?policy`
 - [x] `GetObjectACL` — `GET /admin/bucket?policy&object=...`
 - [x] `CheckBucketIndex` — `GET /admin/bucket?index`
+- [x] `RepairBucketIndex` — `GET /admin/bucket?index&fix=true`
 - [x] `LinkBucketToUser` — `PUT /admin/bucket` with `uid`
 - [x] `LinkBucketToAccount` — `PUT /admin/bucket` with `account-id`
 - [x] `SetBucketQuota` — `PUT /admin/bucket?quota`
@@ -116,6 +117,12 @@ cheaper name-only listing.
 `GetBucketACL` and `GetObjectACL` return `AccessControlPolicy`, containing the
 owner and ACL grants. The object getter requires both `Bucket` and `Object`.
 S3 bucket policy documents use a separate S3 API.
+
+`CheckBucketIndex` reports index inconsistencies without repair.
+`RepairBucketIndex` removes invalid multipart index entries and rebuilds index
+statistics. Set its `CheckObjects` to true to also reconcile object entries.
+Both require `buckets=write` and return a `BucketIndexCheck` report; `Objects`
+is present only when object reconciliation is requested.
 
 `SetBucketSync` requires `Enabled: new(true)` to enable synchronization or
 `Enabled: new(false)` to disable it. Omitting `Enabled` returns a validation
