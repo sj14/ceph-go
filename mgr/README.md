@@ -92,6 +92,18 @@ is explicit.
 - [x] `UpdateBucketRateLimit` — `PUT /api/rgw/bucket/{uid}/ratelimit`
 - [ ] Get bucket and user counts — `GET /ui-api/rgw/bucket`
 
+`UpdateBucketRequest.EncryptionEnabled` and `Lifecycle` are required pointers.
+Supply the settings you want retained on every update; omission returns a
+validation error. `new(false)` disables encryption, and `new("")` or
+`new("{}")` removes the lifecycle policy. `ObjectLock` is also required:
+use `&mgr.BucketObjectLockConfiguration{Enabled: new(false)}` for a bucket without
+Object Lock. `Enabled` is required; nil returns a validation error. For an
+enabled bucket, set `Enabled: new(true)`, `Mode`, and exactly
+one positive `RetentionDays` or `RetentionYears`. This describes the current
+lock state; it does not enable or disable Object Lock. The previous flat
+`LockMode` and retention fields move into this configuration. Updates can
+partially apply before Ceph returns an error.
+
 ### Status and multisite setup
 
 - [ ] Get RGW status — `GET /ui-api/rgw/status`

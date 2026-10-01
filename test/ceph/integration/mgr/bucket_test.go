@@ -19,11 +19,18 @@ type bucketFixture struct {
 
 func createBucketFixture(t *testing.T, client *mgr.Client, ctx context.Context) *bucketFixture {
 	t.Helper()
+	return createBucketFixtureWithSettings(t, client, ctx, mgr.CreateBucketRequest{})
+}
+
+func createBucketFixtureWithSettings(t *testing.T, client *mgr.Client, ctx context.Context, input mgr.CreateBucketRequest) *bucketFixture {
+	t.Helper()
 	fixture := &bucketFixture{
 		client: client,
 		name:   uniqueResourceName(t, "ceph-go-integration-bucket"),
 	}
-	if err := client.CreateBucket(ctx, mgr.CreateBucketRequest{Name: fixture.name, UID: "ceph-go-test"}); err != nil {
+	input.Name = fixture.name
+	input.UID = "ceph-go-test"
+	if err := client.CreateBucket(ctx, input); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -37,6 +44,81 @@ func createBucketFixture(t *testing.T, client *mgr.Client, ctx context.Context) 
 		}
 	})
 	return fixture
+}
+
+func TestUpdateBucketObjectLock(t *testing.T) {
+	t.Parallel()
+	client := integrationClient(t)
+	ctx := integrationContext(t)
+	fixture := createBucketFixtureWithSettings(t, client, ctx, mgr.CreateBucketRequest{
+		LockEnabled: true, LockMode: mgr.LockModeGovernance, LockRetentionDays: new(int64(2)),
+	})
+	before, err := client.GetBucket(ctx, mgr.GetBucketRequest{Name: fixture.name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !before.LockEnabled || before.LockMode != mgr.LockModeGovernance ||
+		before.LockRetentionDays == nil || *before.LockRetentionDays != 2 {
+		t.Fatalf("initial Object Lock configuration = %#v", before)
+	}
+	for _, test := range []struct {
+		name       string
+		lock       *mgr.BucketObjectLockConfiguration
+		versioning mgr.BucketVersioningState
+	}{
+		{name: "omitted configuration"},
+		{name: "omitted enabled state", lock: &mgr.BucketObjectLockConfiguration{}},
+		{name: "missing mode", lock: &mgr.BucketObjectLockConfiguration{Enabled: new(true), RetentionDays: new(int64(2))}},
+		{name: "invalid mode", lock: &mgr.BucketObjectLockConfiguration{Enabled: new(true), Mode: "invalid", RetentionDays: new(int64(2))}},
+		{name: "missing retention", lock: &mgr.BucketObjectLockConfiguration{Enabled: new(true), Mode: mgr.LockModeGovernance}},
+		{name: "both periods", lock: &mgr.BucketObjectLockConfiguration{Enabled: new(true), Mode: mgr.LockModeGovernance, RetentionDays: new(int64(2)), RetentionYears: new(int64(1))}},
+		{name: "zero period", lock: &mgr.BucketObjectLockConfiguration{Enabled: new(true), Mode: mgr.LockModeGovernance, RetentionDays: new(int64(0))}},
+		{name: "negative period", lock: &mgr.BucketObjectLockConfiguration{Enabled: new(true), Mode: mgr.LockModeGovernance, RetentionYears: new(int64(-1))}},
+		{name: "disabled with retention", lock: &mgr.BucketObjectLockConfiguration{Enabled: new(false), Mode: mgr.LockModeGovernance, RetentionDays: new(int64(2))}},
+		{name: "suspended versioning", lock: &mgr.BucketObjectLockConfiguration{Enabled: new(true), Mode: mgr.LockModeGovernance, RetentionDays: new(int64(2))}, versioning: mgr.BucketVersioningSuspended},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			// A request reaching Ceph could change the owner before failing.
+			err := client.UpdateBucket(ctx, mgr.UpdateBucketRequest{
+				Name: fixture.name, BucketID: before.ID, UID: "ceph-go-admin",
+				EncryptionEnabled: new(false), Lifecycle: new(""), ObjectLock: test.lock,
+				VersioningState: test.versioning,
+			})
+			var apiError *mgr.APIError
+			if err == nil || errors.As(err, &apiError) || !strings.Contains(err.Error(), "Object Lock") {
+				t.Fatalf("update error = %v, want local Object Lock validation error", err)
+			}
+		})
+	}
+	unchanged, err := client.GetBucket(ctx, mgr.GetBucketRequest{Name: fixture.name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unchanged.Owner != before.Owner || unchanged.Versioning != before.Versioning ||
+		!unchanged.LockEnabled || unchanged.LockMode != before.LockMode ||
+		unchanged.LockRetentionDays == nil || *unchanged.LockRetentionDays != 2 {
+		t.Fatalf("rejected updates changed bucket = %#v", unchanged)
+	}
+	for _, lock := range []mgr.BucketObjectLockConfiguration{
+		{Enabled: new(true), Mode: mgr.LockModeGovernance, RetentionDays: new(int64(2))},
+		{Enabled: new(true), Mode: mgr.LockModeCompliance, RetentionYears: new(int64(1))},
+	} {
+		if err := client.UpdateBucket(ctx, mgr.UpdateBucketRequest{
+			Name: fixture.name, BucketID: before.ID, UID: "ceph-go-test",
+			EncryptionEnabled: new(false), Lifecycle: new(""), ObjectLock: &lock,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		bucket, err := client.GetBucket(ctx, mgr.GetBucketRequest{Name: fixture.name})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bucket.LockEnabled || bucket.LockMode != lock.Mode ||
+			(lock.RetentionDays != nil && (bucket.LockRetentionDays == nil || *bucket.LockRetentionDays != *lock.RetentionDays)) ||
+			(lock.RetentionYears != nil && (bucket.LockRetentionYears == nil || *bucket.LockRetentionYears != *lock.RetentionYears)) {
+			t.Fatalf("updated Object Lock configuration = %#v, want %#v", bucket, lock)
+		}
+	}
 }
 
 func TestCreateBucket(t *testing.T) {
@@ -112,13 +194,63 @@ func TestUpdateBucket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := client.UpdateBucket(ctx, mgr.UpdateBucketRequest{
+	// A disabled rule records a real lifecycle policy without expiring objects.
+	lifecycle := `<LifecycleConfiguration><Rule><ID>ceph-go-retained-policy</ID><Prefix>ceph-go/</Prefix><Status>Disabled</Status><Expiration><Days>365</Days></Expiration></Rule></LifecycleConfiguration>`
+	update := mgr.UpdateBucketRequest{
 		Name:              bucketFixture.name,
 		BucketID:          bucket.ID,
 		UID:               "ceph-go-test",
-		VersioningState:   mgr.BucketVersioningEnabled,
-		EncryptionEnabled: false,
-	}); err != nil {
+		EncryptionEnabled: new(true),
+		EncryptionType:    mgr.BucketEncryptionAES256,
+		Lifecycle:         &lifecycle,
+		ObjectLock:        &mgr.BucketObjectLockConfiguration{Enabled: new(false)},
+	}
+	if err := client.UpdateBucket(ctx, update); err != nil {
+		t.Fatal(err)
+	}
+	bucket, err = client.GetBucket(ctx, mgr.GetBucketRequest{Name: bucketFixture.name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bucket.Encryption != mgr.BucketEncryptionEnabled || !strings.Contains(string(bucket.Lifecycle), "ceph-go-retained-policy") {
+		t.Fatalf("configured bucket encryption/lifecycle = %s/%s", bucket.Encryption, bucket.Lifecycle)
+	}
+	for _, test := range []struct {
+		name    string
+		request mgr.UpdateBucketRequest
+		wantErr string
+	}{
+		{
+			name: "omitted encryption",
+			request: mgr.UpdateBucketRequest{
+				Name: bucketFixture.name, BucketID: bucket.ID, UID: "ceph-go-test", Lifecycle: new("{}"),
+			},
+			wantErr: "encryption state must be explicitly specified",
+		},
+		{
+			name: "omitted lifecycle",
+			request: mgr.UpdateBucketRequest{
+				Name: bucketFixture.name, BucketID: bucket.ID, UID: "ceph-go-test", EncryptionEnabled: new(false),
+			},
+			wantErr: "lifecycle policy must be explicitly specified",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := client.UpdateBucket(ctx, test.request); err == nil || !strings.Contains(err.Error(), test.wantErr) {
+				t.Fatalf("update error = %v, want %q", err, test.wantErr)
+			}
+			unchanged, err := client.GetBucket(ctx, mgr.GetBucketRequest{Name: bucketFixture.name})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if unchanged.Encryption != bucket.Encryption || string(unchanged.Lifecycle) != string(bucket.Lifecycle) {
+				t.Fatalf("rejected update changed encryption/lifecycle: %s/%s", unchanged.Encryption, unchanged.Lifecycle)
+			}
+		})
+	}
+	// Explicitly retain both settings while updating versioning.
+	update.VersioningState = mgr.BucketVersioningEnabled
+	if err := client.UpdateBucket(ctx, update); err != nil {
 		t.Fatal(err)
 	}
 
@@ -126,8 +258,25 @@ func TestUpdateBucket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bucket.Owner != "ceph-go-test" || bucket.Versioning != mgr.BucketVersioningEnabled {
+	if bucket.Owner != "ceph-go-test" || bucket.Versioning != mgr.BucketVersioningEnabled ||
+		bucket.Encryption != mgr.BucketEncryptionEnabled || !strings.Contains(string(bucket.Lifecycle), "ceph-go-retained-policy") {
 		t.Fatalf("updated bucket = %#v", bucket)
+	}
+	// Deliberately disable encryption and remove lifecycle using each accepted
+	// deletion spelling, rather than relying on an omitted field.
+	for _, emptyPolicy := range []string{"", "{}"} {
+		update.EncryptionEnabled = new(false)
+		update.Lifecycle = &emptyPolicy
+		if err := client.UpdateBucket(ctx, update); err != nil {
+			t.Fatal(err)
+		}
+		bucket, err = client.GetBucket(ctx, mgr.GetBucketRequest{Name: bucketFixture.name})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if bucket.Encryption != mgr.BucketEncryptionDisabled || string(bucket.Lifecycle) != "null" {
+			t.Fatalf("bucket encryption/lifecycle after explicit removal = %s/%s", bucket.Encryption, bucket.Lifecycle)
+		}
 	}
 }
 

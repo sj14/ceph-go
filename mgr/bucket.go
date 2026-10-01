@@ -212,32 +212,56 @@ func (client *Client) GetBucket(ctx context.Context, input GetBucketRequest) (Bu
 // UpdateBucketRequest contains the parameters accepted by Ceph's RGW bucket
 // update controller. Name, BucketID, and UID are required. UID is the desired
 // owner and must have an S3 key because Ceph uses that credential for the
-// follow-up S3 configuration calls. EncryptionEnabled is the desired
-// encryption state, matching Ceph Dashboard's frontend.
+// follow-up S3 configuration calls. EncryptionEnabled and Lifecycle must both
+// be non-nil: they specify the desired configuration, not optional changes.
+// To retain existing settings, supply the desired encryption state and the
+// existing lifecycle document. False disables encryption; an empty lifecycle
+// string or "{}" removes its policy. Lifecycle accepts XML or JSON.
+// ObjectLock must describe the bucket's current lock state; for an enabled
+// bucket, it supplies the retention settings Ceph reapplies on every update.
 type UpdateBucketRequest struct {
 	Name     string
 	BucketID string
 	UID      string
 
 	VersioningState    BucketVersioningState
-	EncryptionEnabled  bool
+	EncryptionEnabled  *bool
 	EncryptionType     BucketEncryptionType
 	KeyID              string
 	MFADelete          BucketMFADeleteState
 	MFATokenSerial     string
 	MFATokenPIN        string
-	LockMode           LockMode
-	LockRetentionDays  *int64
-	LockRetentionYears *int64
+	ObjectLock         *BucketObjectLockConfiguration
 	Tags               string
 	BucketPolicy       string
 	CannedACL          BucketCannedACL
 	ReplicationEnabled *bool
-	Lifecycle          string
+	Lifecycle          *string
 	DaemonName         string
 }
 
+// BucketObjectLockConfiguration describes the current Object Lock state and
+// the desired default retention for a bucket update. Enabled is a caller-supplied
+// statement of current state, not a request to enable or disable Object Lock.
+// Enabled must be non-nil; use an explicit true or false value.
+// When enabled, Mode and exactly one positive retention period are required.
+// When disabled, omit Mode and both retention periods.
+//
+// Verified against Ceph v20.2.4's dashboard/controllers/rgw.py (RgwBucket.set)
+// and dashboard/services/rgw_client.py (set_bucket_locking, perform_validations),
+// under src/pybind/mgr. The update route accepts retention parameters but no
+// lock_enabled parameter.
+type BucketObjectLockConfiguration struct {
+	Enabled        *bool
+	Mode           LockMode
+	RetentionDays  *int64
+	RetentionYears *int64
+}
+
 // UpdateBucket updates a bucket through PUT /api/rgw/bucket/{bucket}.
+// It requires explicit encryption, lifecycle, and Object Lock settings and does not fetch
+// or merge the current configuration. Ceph performs multiple operations, so
+// an error can leave some requested changes applied.
 //
 // Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
 //   - src/pybind/mgr/dashboard/controllers/rgw.py (RgwBucket.set)
@@ -257,12 +281,25 @@ func (client *Client) UpdateBucket(ctx context.Context, input UpdateBucketReques
 	if strings.TrimSpace(input.UID) == "" {
 		return errors.New("mgr: bucket UID must not be empty")
 	}
+	if input.EncryptionEnabled == nil {
+		return errors.New("mgr: bucket encryption state must be explicitly specified")
+	}
+	if input.Lifecycle == nil {
+		return errors.New("mgr: bucket lifecycle policy must be explicitly specified; use an empty string or {} to remove it")
+	}
+	if err := validateBucketObjectLock(input.ObjectLock); err != nil {
+		return err
+	}
+	if *input.ObjectLock.Enabled && input.VersioningState == BucketVersioningSuspended {
+		return errors.New("mgr: bucket versioning cannot be suspended while Object Lock is enabled")
+	}
 
 	endpoint := client.bucketEndpoint(input.Name)
 	query := url.Values{
 		"bucket_id":        {input.BucketID},
 		"uid":              {input.UID},
-		"encryption_state": {strconv.FormatBool(input.EncryptionEnabled)},
+		"encryption_state": {strconv.FormatBool(*input.EncryptionEnabled)},
+		"lifecycle":        {*input.Lifecycle},
 	}
 	setOptional(query, "versioning_state", string(input.VersioningState))
 	setOptional(query, "encryption_type", string(input.EncryptionType))
@@ -270,14 +307,15 @@ func (client *Client) UpdateBucket(ctx context.Context, input UpdateBucketReques
 	setOptional(query, "mfa_delete", string(input.MFADelete))
 	setOptional(query, "mfa_token_serial", input.MFATokenSerial)
 	setOptional(query, "mfa_token_pin", input.MFATokenPIN)
-	setOptional(query, "lock_mode", string(input.LockMode))
-	setOptionalInt(query, "lock_retention_period_days", input.LockRetentionDays)
-	setOptionalInt(query, "lock_retention_period_years", input.LockRetentionYears)
+	if *input.ObjectLock.Enabled {
+		setOptional(query, "lock_mode", string(input.ObjectLock.Mode))
+		setOptionalInt(query, "lock_retention_period_days", input.ObjectLock.RetentionDays)
+		setOptionalInt(query, "lock_retention_period_years", input.ObjectLock.RetentionYears)
+	}
 	setOptional(query, "tags", input.Tags)
 	setOptional(query, "bucket_policy", input.BucketPolicy)
 	setOptional(query, "canned_acl", string(input.CannedACL))
 	setOptionalBool(query, "replication", input.ReplicationEnabled)
-	setOptional(query, "lifecycle", input.Lifecycle)
 	setOptional(query, "daemon_name", input.DaemonName)
 	endpoint.RawQuery = query.Encode()
 
@@ -287,6 +325,34 @@ func (client *Client) UpdateBucket(ctx context.Context, input UpdateBucketReques
 	}
 	_, err = client.do(request)
 	return err
+}
+
+func validateBucketObjectLock(lock *BucketObjectLockConfiguration) error {
+	if lock == nil {
+		return errors.New("mgr: bucket Object Lock configuration must be explicitly specified")
+	}
+	if lock.Enabled == nil {
+		return errors.New("mgr: bucket Object Lock enabled state must be explicitly specified")
+	}
+	if !*lock.Enabled {
+		if lock.Mode != "" || lock.RetentionDays != nil || lock.RetentionYears != nil {
+			return errors.New("mgr: disabled Object Lock must not include mode or retention settings")
+		}
+		return nil
+	}
+	switch strings.ToUpper(string(lock.Mode)) {
+	case string(LockModeGovernance), string(LockModeCompliance):
+	default:
+		return errors.New("mgr: enabled Object Lock requires a GOVERNANCE or COMPLIANCE retention mode")
+	}
+	if (lock.RetentionDays == nil) == (lock.RetentionYears == nil) {
+		return errors.New("mgr: enabled Object Lock requires exactly one retention period in days or years")
+	}
+	if (lock.RetentionDays != nil && *lock.RetentionDays <= 0) ||
+		(lock.RetentionYears != nil && *lock.RetentionYears <= 0) {
+		return errors.New("mgr: Object Lock retention period must be positive")
+	}
+	return nil
 }
 
 // DeleteBucketRequest identifies an empty bucket to delete and, optionally,

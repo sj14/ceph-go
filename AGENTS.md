@@ -154,3 +154,31 @@ The authoritative handlers are `src/rgw/rgw_rest_config.cc`/`.h` and
 `src/rgw/driver/rados/rgw_sal_rados.cc`. Ceph's multisite tests in
 `src/test/rgw/rgw_multi` exercise realm and period configuration.
 Period operations also use `src/rgw/driver/rados/rgw_period.cc`.
+
+## Dashboard bucket update verification
+
+Verified against Ceph v20.2.4's
+`src/pybind/mgr/dashboard/controllers/rgw.py` (`RgwBucket.set`),
+`services/rgw_client.py` (encryption, lifecycle, and locking helpers), and
+`frontend/src/app/shared/api/rgw-bucket.service.ts` (`update`), relative to
+`src/pybind/mgr/dashboard` for the latter two paths.
+`qa/tasks/mgr/dashboard/test_rgw.py` exercises bucket updates.
+
+The controller defaults encryption to false, removes lifecycle configuration
+when missing or empty, and reapplies retention for object-lock-enabled buckets.
+These are not patch semantics. Require explicit encryption and lifecycle
+choices and reject omitted values before sending any request. Send explicit
+false/empty values for deletion; do not silently fetch and merge settings or
+switch to the direct RGW transport. Require an explicit Object Lock configuration
+describing the current lock state. Validate enabled configurations for a valid
+mode and exactly one positive retention period. The configuration's `Enabled`
+field must be a required pointer so omission cannot be mistaken for false;
+reject nil before dereferencing or sending. Reject retention settings
+for disabled configurations before sending. This is a caller assertion, not an
+update toggle: the route has no `lock_enabled` parameter. Do not imply that
+validation checks the live bucket state without a read. Ceph's locking helper
+rejects omitted settings before writing retention, but ownership or versioning
+may already have changed. Document partial failure behavior and validate the
+known conflict between enabled Object Lock and suspended versioning locally.
+Integration coverage must check rejection without mutation, explicit retention
+of settings, and deliberate encryption/lifecycle deletion.
