@@ -23,6 +23,8 @@ const (
 	SubuserAccessFull      SubuserAccess = "full"
 )
 
+// CreateSubuserRequest requires UID and an unqualified Subuser name, without
+// a UID prefix.
 type CreateSubuserRequest struct {
 	UID               string
 	Subuser           string
@@ -58,6 +60,7 @@ func (client *Client) CreateSubuser(ctx context.Context, input CreateSubuserRequ
 
 // UpdateSubuserRequest requires Access on every update, including credential
 // changes. Use a pointer to SubuserAccessNone to explicitly clear permissions.
+// UID and an unqualified Subuser name are required.
 type UpdateSubuserRequest struct {
 	UID            string
 	Subuser        string
@@ -97,6 +100,7 @@ func (client *Client) UpdateSubuser(ctx context.Context, input UpdateSubuserRequ
 	return client.subuserRequest(ctx, http.MethodPost, query)
 }
 
+// DeleteSubuserRequest requires UID and an unqualified Subuser name.
 type DeleteSubuserRequest struct {
 	UID       string
 	Subuser   string
@@ -138,6 +142,16 @@ func validateSubuser(uid, subuser string) error {
 	}
 	if strings.TrimSpace(subuser) == "" {
 		return errors.New("rgw: subuser name must not be empty")
+	}
+	return validateUnqualifiedSubuser(subuser)
+}
+
+func validateUnqualifiedSubuser(subuser string) error {
+	// Ceph v20.2.4's RGWUserAdminOpState::set_subuser in
+	// src/rgw/driver/rados/rgw_user.cc interprets a UID prefix as an override
+	// of the separately supplied UID, including during credential creation.
+	if strings.Contains(subuser, ":") {
+		return errors.New("rgw: subuser must be an unqualified name without a UID prefix")
 	}
 	return nil
 }

@@ -2,6 +2,7 @@ package integration
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/sj14/ceph-go/rgw"
@@ -119,5 +120,92 @@ func TestRGWDeleteSubuser(t *testing.T) {
 	}
 	if len(user.Subusers) != 0 {
 		t.Fatalf("subusers after Admin Ops delete = %#v", user.Subusers)
+	}
+}
+
+func TestRGWRejectQualifiedSubusers(t *testing.T) {
+	t.Parallel()
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	var users []rgw.User
+	for range 2 {
+		fixture, _ := createRGWUserFixture(t, client, ctx)
+		if _, err := client.CreateSubuser(ctx, rgw.CreateSubuserRequest{
+			UID: fixture.uid, Subuser: "reader", Access: rgw.SubuserAccessRead,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := client.CreateS3Key(ctx, rgw.CreateS3KeyRequest{
+			UID: fixture.uid, Subuser: "reader",
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := client.CreateSwiftKey(ctx, rgw.CreateSwiftKeyRequest{
+			UID: fixture.uid, Subuser: "reader", SecretKey: "original-swift-secret", GenerateKey: new(false),
+		}); err != nil {
+			t.Fatal(err)
+		}
+		user, err := client.GetUser(ctx, rgw.GetUserRequest{UID: fixture.uid})
+		if err != nil {
+			t.Fatal(err)
+		}
+		users = append(users, user)
+	}
+	uid := users[0].ID
+	operations := []struct {
+		name string
+		call func(string) error
+	}{
+		{"CreateSubuser", func(prefix string) error {
+			_, err := client.CreateSubuser(ctx, rgw.CreateSubuserRequest{
+				UID: uid, Subuser: prefix + ":new-reader", Access: rgw.SubuserAccessFull,
+			})
+			return err
+		}},
+		{"UpdateSubuser", func(prefix string) error {
+			_, err := client.UpdateSubuser(ctx, rgw.UpdateSubuserRequest{
+				UID: uid, Subuser: prefix + ":reader", Access: new(rgw.SubuserAccessFull),
+				KeyType: rgw.UserKeyTypeSwift, SecretKey: "replacement-secret",
+			})
+			return err
+		}},
+		{"DeleteSubuser", func(prefix string) error {
+			return client.DeleteSubuser(ctx, rgw.DeleteSubuserRequest{
+				UID: uid, Subuser: prefix + ":reader", PurgeKeys: new(true),
+			})
+		}},
+		{"CreateS3Key", func(prefix string) error {
+			_, err := client.CreateS3Key(ctx, rgw.CreateS3KeyRequest{UID: uid, Subuser: prefix + ":reader"})
+			return err
+		}},
+		{"CreateSwiftKey", func(prefix string) error {
+			_, err := client.CreateSwiftKey(ctx, rgw.CreateSwiftKeyRequest{
+				UID: uid, Subuser: prefix + ":reader", SecretKey: "replacement-secret", GenerateKey: new(false),
+			})
+			return err
+		}},
+		{"DeleteSwiftKey", func(prefix string) error {
+			return client.DeleteSwiftKey(ctx, rgw.DeleteSwiftKeyRequest{UID: uid, Subuser: prefix + ":reader"})
+		}},
+	}
+	for _, operation := range operations {
+		t.Run(operation.name, func(t *testing.T) {
+			for _, prefix := range []string{uid, users[1].ID} {
+				err := operation.call(prefix)
+				var apiErr *rgw.APIError
+				if err == nil || errors.As(err, &apiErr) {
+					t.Fatalf("qualified subuser error = %v, want local validation error", err)
+				}
+				for _, before := range users {
+					after, err := client.GetUser(ctx, rgw.GetUserRequest{UID: before.ID})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if !reflect.DeepEqual(before, after) {
+						t.Fatalf("qualified subuser changed user %q", before.ID)
+					}
+				}
+			}
+		})
 	}
 }

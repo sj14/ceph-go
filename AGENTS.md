@@ -146,6 +146,16 @@ All source paths below refer to that tag.
   clears permissions. Send its empty wire value rather than dropping it.
   Verify rejection without credential or permission changes, explicit access
   during secret rotation, and deliberate permission clearing in integration tests.
+- Subuser selectors: `RGWUserAdminOpState::set_subuser` in `rgw_user.cc` parses
+  the first colon as an owner prefix and overrides the UID set by the REST
+  handler. Require unqualified names for every request Subuser field, including
+  optional S3 key associations and required Swift key creation. Reject colons
+  locally even when the prefix matches UID; do not normalize qualified names.
+  Share that validation with subuser creation, update, deletion, and Swift key
+  deletion. Returned Subuser IDs remain qualified according to Ceph's formatter.
+  Integration coverage must verify rejection of matching and conflicting owner
+  prefixes across all six operations without changing either user's subusers,
+  permissions, or S3/Swift credentials, plus valid unqualified operations.
 - Bucket listing: `src/rgw/driver/rados/rgw_rest_bucket.cc`
   (`RGWOp_Bucket_Info::execute`) does not parse an `account-id` listing filter.
   `rgw_bucket.cc` in the same directory resolves account membership from UID.

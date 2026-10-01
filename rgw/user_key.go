@@ -11,7 +11,7 @@ import (
 )
 
 // CreateS3KeyRequest creates an S3 credential for UID, optionally associated
-// with Subuser. GenerateKey defaults to true when omitted.
+// with an unqualified Subuser name. GenerateKey defaults to true when omitted.
 //
 // Verified against Ceph v20.2.4's src/rgw/driver/rados/rgw_rest_user.cc
 // (RGWOp_Key_Create) and rgw_user.cc (RGWUserAdminOp_Key::create).
@@ -44,8 +44,9 @@ func (client *Client) CreateS3Key(ctx context.Context, input CreateS3KeyRequest)
 }
 
 // CreateSwiftKeyRequest creates a Swift credential for a subuser. UID and
-// Subuser are required. GenerateKey defaults to true when omitted. Ceph
-// derives the Swift identity from UID and Subuser, so there is no AccessKey.
+// an unqualified Subuser name are required. GenerateKey defaults to true when
+// omitted. Ceph derives the Swift identity from UID and Subuser, so there is
+// no AccessKey.
 //
 // Verified against Ceph v20.2.4's src/rgw/driver/rados/rgw_rest_user.cc
 // (RGWOp_Key_Create) and rgw_user.cc (RGWAccessKeyPool::generate_key and
@@ -85,6 +86,9 @@ func (client *Client) createKey(ctx context.Context, uid string, query url.Value
 	}
 	if query.Get("key-type") == string(UserKeyTypeSwift) && strings.TrimSpace(query.Get("subuser")) == "" {
 		return errors.New("rgw: subuser name must not be empty")
+	}
+	if err := validateUnqualifiedSubuser(query.Get("subuser")); err != nil {
+		return err
 	}
 	query.Set("key", "")
 	query.Set("uid", uid)
@@ -138,9 +142,10 @@ func (client *Client) deleteKey(ctx context.Context, uid string, keyType UserKey
 	if strings.TrimSpace(value) == "" {
 		return fmt.Errorf("rgw: %s must not be empty", selector)
 	}
-	// Ceph's set_subuser interprets a UID prefix as an override of uid.
-	if keyType == UserKeyTypeSwift && strings.Contains(value, ":") {
-		return errors.New("rgw: subuser must be an unqualified name without a UID prefix")
+	if keyType == UserKeyTypeSwift {
+		if err := validateUnqualifiedSubuser(value); err != nil {
+			return err
+		}
 	}
 	query := url.Values{
 		"key":      {""},

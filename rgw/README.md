@@ -79,6 +79,12 @@ and an unqualified `Subuser` name, such as `reader` rather than `alice:reader`.
 Both fix the key type internally and delete only the selected credential.
 Swift key deletion preserves the subuser and its S3 credentials.
 
+Every request's `Subuser` field accepts only an unqualified name, such as
+`reader`, with the owner supplied separately through `UID`. Qualified values
+such as `alice:reader` are rejected before sending, even when the prefix matches
+`UID`. Returned `Subuser.ID` values include the owner prefix and cannot be passed
+directly as request subuser names.
+
 `UpdateSubuser` requires an explicit `Access` on every update, including secret
 rotation. For example, use `Access: new(rgw.SubuserAccessReadWrite)` to retain
 read/write access, or `Access: new(rgw.SubuserAccessNone)` to clear permissions.
