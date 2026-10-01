@@ -209,28 +209,49 @@ func (client *Client) ListUsers(ctx context.Context, input ListUsersRequest) (Us
 	return users, nil
 }
 
-// GetUserRequest identifies a user by UID or S3 access key. Stats adds current
+// GetUserRequest identifies a user by UID. Stats adds current
 // storage statistics; Sync asks RGW to synchronize them before reading.
 type GetUserRequest struct {
-	UID       string
+	UID   string
+	Stats *bool
+	Sync  *bool
+}
+
+// GetUser retrieves a user by UID directly through GET /admin/user.
+// UID is required.
+//
+// Verified against Ceph v20.2.4's src/rgw/driver/rados/rgw_rest_user.cc
+// (RGWOp_User_Info) and rgw_user.cc (RGWUser::init and
+// RGWUserAdminOp_User::info).
+func (client *Client) GetUser(ctx context.Context, input GetUserRequest) (User, error) {
+	return client.getUser(ctx, "uid", input.UID, input.Stats, input.Sync)
+}
+
+// GetUserByAccessKeyRequest identifies a user by one of its S3 access keys.
+// Stats adds current storage statistics; Sync asks RGW to synchronize them
+// before reading.
+type GetUserByAccessKeyRequest struct {
 	AccessKey string
 	Stats     *bool
 	Sync      *bool
 }
 
-// GetUser retrieves a user directly through GET /admin/user.
-func (client *Client) GetUser(ctx context.Context, input GetUserRequest) (User, error) {
+// GetUserByAccessKey retrieves the owner of an S3 access key directly through
+// GET /admin/user?access-key=.... AccessKey is required.
+func (client *Client) GetUserByAccessKey(ctx context.Context, input GetUserByAccessKeyRequest) (User, error) {
+	return client.getUser(ctx, "access-key", input.AccessKey, input.Stats, input.Sync)
+}
+
+func (client *Client) getUser(ctx context.Context, selector, value string, stats, sync *bool) (User, error) {
 	if ctx == nil {
 		return User{}, errors.New("rgw: context must not be nil")
 	}
-	if strings.TrimSpace(input.UID) == "" && strings.TrimSpace(input.AccessKey) == "" {
-		return User{}, errors.New("rgw: user UID or access key must not be empty")
+	if strings.TrimSpace(value) == "" {
+		return User{}, fmt.Errorf("rgw: user %s must not be empty", selector)
 	}
-	query := url.Values{}
-	setString(query, "uid", input.UID)
-	setString(query, "access-key", input.AccessKey)
-	setBool(query, "stats", input.Stats)
-	setBool(query, "sync", input.Sync)
+	query := url.Values{selector: {value}}
+	setBool(query, "stats", stats)
+	setBool(query, "sync", sync)
 	return client.userRequest(ctx, http.MethodGet, query)
 }
 

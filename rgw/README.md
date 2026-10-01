@@ -47,6 +47,7 @@ legacy and generation-aware data-log notification formats.
 
 - [x] `ListUsers` — `GET /admin/user?list`
 - [x] `GetUser` — `GET /admin/user`
+- [x] `GetUserByAccessKey` — `GET /admin/user?access-key=...`
 - [x] `GetUserQuotas` — `GET /admin/user?quota`, returns both scopes
 - [x] `GetUserQuota` — `GET /admin/user?quota&quota-type=user`, returns `Quota`
 - [x] `GetUserBucketQuota` — `GET /admin/user?quota&quota-type=bucket`, returns `Quota`
@@ -63,6 +64,10 @@ legacy and generation-aware data-log notification formats.
 - [x] `DeleteS3Key` — `DELETE /admin/user?key&key-type=s3`
 - [x] `DeleteSwiftKey` — `DELETE /admin/user?key&key-type=swift`
 - [x] `DeleteUserCapabilities` — `DELETE /admin/user?caps`
+
+`GetUser` requires `UID`; `GetUserByAccessKey` requires an S3 `AccessKey` and
+returns its owner. Both support `Stats` and `Sync`. Statistics are absent unless
+requested with `Stats: new(true)`.
 
 `CreateS3Key` and `CreateSwiftKey` use separate requests and fix the key type
 internally. Both return the user's complete collection of that key type after

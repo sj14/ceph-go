@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"reflect"
 	"testing"
 	"time"
 
@@ -69,6 +70,74 @@ func TestRGWGetUser(t *testing.T) {
 	}
 	if user.ID != fixture.uid || user.Stats == nil || user.Stats.NumObjects != 0 {
 		t.Fatalf("Admin Ops user = %#v", user)
+	}
+	for _, uid := range []string{"", " "} {
+		_, err := client.GetUser(ctx, rgw.GetUserRequest{UID: uid})
+		var apiErr *rgw.APIError
+		if err == nil || errors.As(err, &apiErr) {
+			t.Fatalf("missing UID error = %v, want local validation error", err)
+		}
+	}
+}
+
+func TestRGWGetUserByAccessKey(t *testing.T) {
+	t.Parallel()
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	for _, accessKey := range []string{"", " "} {
+		_, err := client.GetUserByAccessKey(ctx, rgw.GetUserByAccessKeyRequest{AccessKey: accessKey})
+		var apiErr *rgw.APIError
+		if err == nil || errors.As(err, &apiErr) {
+			t.Fatalf("missing access key error = %v, want local validation error", err)
+		}
+	}
+	// Two independent owners ensure each key selects its own user.
+	for range 2 {
+		fixture, _ := createRGWUserFixture(t, client, ctx)
+		keys, err := client.CreateS3Key(ctx, rgw.CreateS3KeyRequest{UID: fixture.uid})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(keys) != 1 {
+			t.Fatalf("created keys = %#v, want one key", keys)
+		}
+		accessKey := keys[0].AccessKey
+		for _, stats := range []*bool{nil, new(false), new(true)} {
+			user, err := client.GetUserByAccessKey(ctx, rgw.GetUserByAccessKeyRequest{
+				AccessKey: accessKey, Stats: stats, Sync: stats,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if user.ID != fixture.uid || len(user.Keys) != 1 || user.Keys[0] != keys[0] {
+				t.Fatalf("user selected by access key = %#v", user)
+			}
+			wantStats := stats != nil && *stats
+			if (user.Stats != nil) != wantStats || (wantStats && user.Stats.NumObjects != 0) {
+				t.Fatalf("user statistics = %#v, requested = %v", user.Stats, wantStats)
+			}
+			byUID, err := client.GetUser(ctx, rgw.GetUserRequest{UID: fixture.uid, Stats: stats})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(user, byUID) {
+				t.Fatalf("key lookup = %#v, UID lookup = %#v", user, byUID)
+			}
+		}
+		if err := client.DeleteS3Key(ctx, rgw.DeleteS3KeyRequest{UID: fixture.uid, AccessKey: accessKey}); err != nil {
+			t.Fatal(err)
+		}
+		_, err = client.GetUserByAccessKey(ctx, rgw.GetUserByAccessKeyRequest{AccessKey: accessKey})
+		// Without a matching key, RGWUser::init retains an anonymous UID;
+		// RGWAccessKeyPool::init rejects it with EINVAL before info can
+		// return NoSuchUser. Preserve Ceph's InvalidArgument response.
+		if !errors.Is(err, rgw.ErrInvalidArgument) {
+			t.Fatalf("lookup by deleted key error = %v, want InvalidArgument", err)
+		}
+		requireRGWAPIStatus(t, err, http.StatusBadRequest)
+		if _, err := client.GetUser(ctx, rgw.GetUserRequest{UID: fixture.uid}); err != nil {
+			t.Fatalf("UID lookup after key deletion: %v", err)
+		}
 	}
 }
 

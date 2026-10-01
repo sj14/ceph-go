@@ -114,6 +114,16 @@ All source paths below refer to that tag.
 
 - Error codes: `src/rgw/rgw_common.cc` contains the S3 error mapping used by
   Admin Ops; retain unknown wire codes through `APIError.Code`.
+- User lookup: `RGWOp_User_Info` in `src/rgw/driver/rados/rgw_rest_user.cc`
+  accepts UID and S3 access key. `RGWUser::init` in that directory's
+  `rgw_user.cc` tries UID first and falls back to the key only when not found;
+  the selectors do not verify each other. Keep `GetUser` UID-only and
+  `GetUserByAccessKey` key-only, with a required selector and shared response
+  and statistics handling. Integration coverage must verify both lookup paths,
+  optional statistics, and a key that no longer identifies a user after deletion.
+  An unknown key leaves an anonymous UID; `RGWAccessKeyPool::init` rejects it
+  with EINVAL before `info` reaches its missing-user check. Preserve the
+  resulting HTTP 400 `InvalidArgument` error.
 - Key creation: `src/rgw/driver/rados/rgw_rest_user.cc` (`RGWOp_Key_Create`)
   parses the request. In the same directory, `rgw_user.cc`
   (`RGWUserAdminOp_Key::create`) returns the complete collection of the selected
