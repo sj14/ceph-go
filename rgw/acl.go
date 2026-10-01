@@ -41,12 +41,16 @@ const (
 	ACLGroupAuthenticatedUsers
 )
 
-type BucketPolicy struct {
-	ACL   BucketACL `json:"acl"`
-	Owner ACLOwner  `json:"owner"`
+// AccessControlPolicy contains the owner and ACL grants of a bucket or object.
+// It is Ceph's RGWAccessControlPolicy representation.
+type AccessControlPolicy struct {
+	ACL   AccessControlList `json:"acl"`
+	Owner ACLOwner          `json:"owner"`
 }
 
-type BucketACL struct {
+// AccessControlList is Ceph's RGWAccessControlList representation, shared by
+// bucket and object access-control policies.
+type AccessControlList struct {
 	Users  []ACLUserEntry  `json:"acl_user_map"`
 	Groups []ACLGroupEntry `json:"acl_group_map"`
 	Grants []ACLGrantEntry `json:"grant_map"`
@@ -90,37 +94,67 @@ type ACLOwner struct {
 	DisplayName string `json:"display_name"`
 }
 
-type GetBucketPolicyRequest struct {
-	Name   string
-	Object string
+type GetBucketACLRequest struct {
+	Name string
 }
 
-// GetBucketPolicy retrieves a bucket or object ACL through
+// GetBucketACL retrieves a bucket's owner and ACL grants through
 // GET /admin/bucket?policy.
 //
 // Verified against Ceph v20.2.4 (tag commit 7f793731f1b3):
 //   - src/rgw/driver/rados/rgw_rest_bucket.cc (RGWOp_Get_Policy)
 //   - src/rgw/driver/rados/rgw_bucket.cc (RGWBucketAdminOp::get_policy)
 //   - src/rgw/rgw_acl.cc and src/rgw/rgw_acl_types.h
-func (client *Client) GetBucketPolicy(ctx context.Context, input GetBucketPolicyRequest) (BucketPolicy, error) {
+func (client *Client) GetBucketACL(ctx context.Context, input GetBucketACLRequest) (AccessControlPolicy, error) {
+	return client.getACL(ctx, input.Name, "")
+}
+
+type GetObjectACLRequest struct {
+	Bucket string
+	Object string
+}
+
+// GetObjectACL retrieves an object's owner and ACL grants through
+// GET /admin/bucket?policy&object=.... Bucket and Object must be provided.
+func (client *Client) GetObjectACL(ctx context.Context, input GetObjectACLRequest) (AccessControlPolicy, error) {
 	if ctx == nil {
-		return BucketPolicy{}, errors.New("rgw: context must not be nil")
+		return AccessControlPolicy{}, errors.New("rgw: context must not be nil")
 	}
-	if strings.TrimSpace(input.Name) == "" {
-		return BucketPolicy{}, errors.New("rgw: bucket name must not be empty")
+	if strings.TrimSpace(input.Object) == "" {
+		return AccessControlPolicy{}, errors.New("rgw: object name must not be empty")
+	}
+	return client.getACL(ctx, input.Bucket, input.Object)
+}
+
+func (client *Client) getACL(ctx context.Context, bucket, object string) (AccessControlPolicy, error) {
+	if ctx == nil {
+		return AccessControlPolicy{}, errors.New("rgw: context must not be nil")
+	}
+	if strings.TrimSpace(bucket) == "" {
+		return AccessControlPolicy{}, errors.New("rgw: bucket name must not be empty")
 	}
 	query := url.Values{
-		"bucket": {input.Name},
+		"bucket": {bucket},
 		"policy": {""},
 	}
-	setString(query, "object", input.Object)
-	body, request, err := client.bucketRequest(ctx, http.MethodGet, query)
+	setString(query, "object", object)
+	request, err := client.newRequest(ctx, http.MethodGet, "bucket", query)
 	if err != nil {
-		return BucketPolicy{}, err
+		return AccessControlPolicy{}, err
 	}
-	var policy BucketPolicy
+	// RGWHTTPArgs::append (src/rgw/rgw_common.cc) registers only the first
+	// Admin Ops subresource. Put policy before object, which also counts as a
+	// subresource. SigV4 canonicalizes query order, so reordering the signed
+	// parameters preserves the signature.
+	query.Del("policy")
+	request.URL.RawQuery = "policy=&" + query.Encode()
+	body, err := client.do(request)
+	if err != nil {
+		return AccessControlPolicy{}, err
+	}
+	var policy AccessControlPolicy
 	if err := json.Unmarshal(body, &policy); err != nil {
-		return BucketPolicy{}, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
+		return AccessControlPolicy{}, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
 	}
 	return policy, nil
 }

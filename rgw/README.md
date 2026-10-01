@@ -78,7 +78,8 @@ Omitting `Access` returns a validation error before sending a request.
 - [x] `ListBucketNames` — `GET /admin/bucket?stats=false`, returns `[]string`
 - [x] `ListBuckets` — `GET /admin/bucket?stats=true`, returns `[]Bucket`
 - [x] `GetBucket` — `GET /admin/bucket`
-- [x] `GetBucketPolicy` — `GET /admin/bucket?policy`
+- [x] `GetBucketACL` — `GET /admin/bucket?policy`
+- [x] `GetObjectACL` — `GET /admin/bucket?policy&object=...`
 - [x] `CheckBucketIndex` — `GET /admin/bucket?index`
 - [x] `LinkBucketToUser` — `PUT /admin/bucket` with `uid`
 - [x] `LinkBucketToAccount` — `PUT /admin/bucket` with `account-id`
@@ -100,6 +101,10 @@ UID lists all buckets. For an account member, Ceph lists that account's buckets.
 
 `ListBuckets` fetches details and statistics; use `ListBucketNames` for the
 cheaper name-only listing.
+
+`GetBucketACL` and `GetObjectACL` return `AccessControlPolicy`, containing the
+owner and ACL grants. The object getter requires both `Bucket` and `Object`.
+S3 bucket policy documents use a separate S3 API.
 
 `SetBucketSync` requires `Enabled: new(true)` to enable synchronization or
 `Enabled: new(false)` to disable it. Omitting `Enabled` returns a validation

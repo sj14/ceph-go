@@ -145,6 +145,16 @@ All source paths below refer to that tag.
   `SetBucketSyncRequest.Enabled` and reject nil before sending. Integration
   coverage must verify explicit disable/enable and rejection without changing
   disabled state, using the bucket-index log's `SyncStopped` value.
+- ACL reads: `RGWOp_Get_Policy` in that REST source and `RGWBucket::get_policy`
+  in `rgw_bucket.cc` read a bucket or object's stored ACL. The `policy` route
+  does not return an S3 bucket policy document. Use separate bucket/object ACL
+  getters, requiring the object's name to prevent fallback to a bucket read.
+  Share `AccessControlPolicy` and `AccessControlList`, matching their source
+  types in `src/rgw/rgw_acl.cc`. Verify distinct bucket/object grants through
+  S3 setup and direct Admin Ops reads in integration tests.
+  `RGWHTTPArgs::append` in `src/rgw/rgw_common.cc` registers only the first
+  Admin Ops subresource: encode `policy` before `object` so object ACL reads
+  reach the policy handler. SigV4 canonical query sorting permits this order.
 - Metadata sections: registration and wire names are in
   `src/rgw/driver/rados/rgw_service.cc` and the handlers listed in
   `rgw/metadata.go`.
