@@ -51,6 +51,10 @@ separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
   when decoding into a full resource model; request all ordinary fields instead.
   Prefer clear, hard-to-misuse APIs over preserving a
   confusing interface; breaking changes are acceptable when needed for this.
+- Use separate methods and request types when target selectors have mutually
+  exclusive fields, especially for resource-specific versus global mutations.
+  Do not expose requests whose target flags silently discard supplied identifiers.
+  Share the update values while keeping target fields specific to each operation.
 - Return decoded domain models and errors from endpoint methods. Keep HTTP status, headers, and raw successful response bodies internal unless an endpoint exposes meaningful transport metadata that callers need.
 - Return single resources by value as `(Resource, error)`, collections as `([]Resource, error)`, and actions without a meaningful result as `error`. Use pointers within models only for nullable fields or when absence must be distinguishable from a zero value.
 - Preserve Ceph's actual HTTP method, route, media type, parameter location, parameter names, and response status.
@@ -127,6 +131,12 @@ All source paths below refer to that tag.
   (`RGWOp_Ratelimit_Info::execute`) returns one scoped limit or all three global
   defaults. Keep separate getters and target requests. Global models use value
   fields and are shared with Dashboard through its type alias.
+- Rate-limit writes: the same source's `RGWOp_Ratelimit_Set::execute` ignores
+  individual identifiers for global writes and chooses the resource from scope.
+  Keep separate user, bucket, and global setters with target-specific requests;
+  only the global setter exposes `RateLimitScope`. Share `RateLimitUpdate`, whose
+  nil fields preserve stored settings. Verify each target and partial updates
+  in integration tests, restoring global settings before parallel tests resume.
 - Usage reads: `src/rgw/rgw_rest_usage.cc` (`RGWOp_Usage_Get`) parses the
   `show-entries` and `show-summary` flags; `src/rgw/rgw_usage.cc`
   (`RGWUsage::show`) omits the corresponding arrays when false. Keep these

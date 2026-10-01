@@ -223,8 +223,9 @@ realm after the response.
 - [x] `GetUserRateLimit` — `GET /admin/ratelimit?ratelimit-scope=user`, returns `RateLimit`
 - [x] `GetBucketRateLimit` — `GET /admin/ratelimit?ratelimit-scope=bucket`, returns `RateLimit`
 - [x] `GetGlobalRateLimits` — `GET /admin/ratelimit?global=true`, returns `GlobalRateLimitConfiguration`
-- [x] `SetRateLimit` — set user, bucket, or global rate limits through
-  `POST /admin/ratelimit`
+- [x] `SetUserRateLimit` — `POST /admin/ratelimit?ratelimit-scope=user`
+- [x] `SetBucketRateLimit` — `POST /admin/ratelimit?ratelimit-scope=bucket`
+- [x] `SetGlobalRateLimit` — `POST /admin/ratelimit?global=true` for one scope
 
 Rate-limit reads have fixed response types and separate user/bucket requests;
 global reads accept no target. `GlobalRateLimitConfiguration` always contains
@@ -233,3 +234,20 @@ return their stored configuration, without merging global defaults; an
 unconfigured resource returns zero limits with `Enabled` false.
 The former `GetRateLimit`, `GetRateLimitRequest`, and `RateLimitConfiguration`
 API is removed; select the getter for the intended target.
+
+Setters also use separate requests: user updates take `UID`, bucket updates
+take `Bucket` and optional `Tenant`, and global updates take `Scope` (`user`,
+`bucket`, or `anon`). Each embeds `RateLimitUpdate`; nil fields preserve stored
+values, zero limits mean unlimited, and `Enabled: new(false)` disables the limit.
+Provide at least one change. The former `SetRateLimit` and `SetRateLimitRequest`
+are removed; select the setter for the intended target.
+
+```go
+err := client.SetUserRateLimit(ctx, rgw.SetUserRateLimitRequest{
+    UID: "alice",
+    RateLimitUpdate: rgw.RateLimitUpdate{
+        MaxReadOps: new(int64(100)),
+        Enabled:    new(true),
+    },
+})
+```

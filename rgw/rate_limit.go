@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// RateLimitScope identifies the object whose rate limit is read or changed.
+// RateLimitScope identifies the global rate-limit default to change.
 type RateLimitScope string
 
 const (
@@ -123,12 +123,10 @@ func (client *Client) getRateLimit(ctx context.Context, query url.Values, result
 	return nil
 }
 
-type SetRateLimitRequest struct {
-	Scope         RateLimitScope
-	UID           string
-	Bucket        string
-	Tenant        string
-	Global        bool
+// RateLimitUpdate contains the changes to a stored rate limit. Nil fields keep
+// their current values; zero limits mean unlimited. At least one field must be
+// provided, and limits must not be negative.
+type RateLimitUpdate struct {
 	MaxReadOps    *int64
 	MaxWriteOps   *int64
 	MaxReadBytes  *int64
@@ -136,9 +134,63 @@ type SetRateLimitRequest struct {
 	Enabled       *bool
 }
 
-// SetRateLimit changes a user, bucket, or one global rate-limit scope through
-// POST /admin/ratelimit. At least one limit or Enabled must be provided.
-func (client *Client) SetRateLimit(ctx context.Context, input SetRateLimitRequest) error {
+type SetUserRateLimitRequest struct {
+	UID string
+	RateLimitUpdate
+}
+
+// SetUserRateLimit changes one user's stored rate limit through
+// POST /admin/ratelimit?ratelimit-scope=user.
+func (client *Client) SetUserRateLimit(ctx context.Context, input SetUserRateLimitRequest) error {
+	if ctx == nil {
+		return errors.New("rgw: context must not be nil")
+	}
+	query := url.Values{}
+	if err := setRateLimitTarget(query, RateLimitScopeUser, input.UID, "", "", false); err != nil {
+		return err
+	}
+	return client.setRateLimit(ctx, query, input.RateLimitUpdate)
+}
+
+type SetBucketRateLimitRequest struct {
+	Bucket string
+	Tenant string
+	RateLimitUpdate
+}
+
+// SetBucketRateLimit changes one bucket's stored rate limit through
+// POST /admin/ratelimit?ratelimit-scope=bucket.
+func (client *Client) SetBucketRateLimit(ctx context.Context, input SetBucketRateLimitRequest) error {
+	if ctx == nil {
+		return errors.New("rgw: context must not be nil")
+	}
+	query := url.Values{}
+	if err := setRateLimitTarget(query, RateLimitScopeBucket, "", input.Bucket, input.Tenant, false); err != nil {
+		return err
+	}
+	return client.setRateLimit(ctx, query, input.RateLimitUpdate)
+}
+
+type SetGlobalRateLimitRequest struct {
+	Scope RateLimitScope
+	RateLimitUpdate
+}
+
+// SetGlobalRateLimit changes one global default through
+// POST /admin/ratelimit?global=true. Scope must be user, bucket, or anon.
+// It does not modify the stored configuration of an individual user or bucket.
+func (client *Client) SetGlobalRateLimit(ctx context.Context, input SetGlobalRateLimitRequest) error {
+	if ctx == nil {
+		return errors.New("rgw: context must not be nil")
+	}
+	query := url.Values{}
+	if err := setRateLimitTarget(query, input.Scope, "", "", "", true); err != nil {
+		return err
+	}
+	return client.setRateLimit(ctx, query, input.RateLimitUpdate)
+}
+
+func (client *Client) setRateLimit(ctx context.Context, query url.Values, input RateLimitUpdate) error {
 	if ctx == nil {
 		return errors.New("rgw: context must not be nil")
 	}
@@ -158,10 +210,6 @@ func (client *Client) SetRateLimit(ctx context.Context, input SetRateLimitReques
 		if limit.value != nil && *limit.value < 0 {
 			return fmt.Errorf("rgw: %s must not be negative", limit.name)
 		}
-	}
-	query := url.Values{}
-	if err := setRateLimitTarget(query, input.Scope, input.UID, input.Bucket, input.Tenant, input.Global); err != nil {
-		return err
 	}
 	setInt64(query, "max-read-ops", input.MaxReadOps)
 	setInt64(query, "max-write-ops", input.MaxWriteOps)
