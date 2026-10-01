@@ -75,12 +75,11 @@ func (client *Client) CreateAccount(ctx context.Context, input CreateAccountRequ
 	return client.accountRequest(ctx, http.MethodPost, query)
 }
 
-// UpdateAccountRequest identifies an account by ID, tenant and name, or email,
-// and contains the values accepted by PUT /admin/account. RGW ignores empty
-// string values, so the string fields cannot be cleared through this endpoint.
+// UpdateAccountRequest requires the target account's ID. Name and Email are
+// update values; empty strings preserve stored values and cannot clear them.
+// Nil limits preserve stored values. The account's tenant cannot be changed.
 type UpdateAccountRequest struct {
 	ID            string
-	Tenant        string
 	Name          string
 	Email         string
 	MaxUsers      *int64
@@ -91,14 +90,18 @@ type UpdateAccountRequest struct {
 }
 
 // UpdateAccount modifies an account directly through PUT /admin/account.
+// Verified against Ceph v20.2.4's src/rgw/rgw_rest_account.cc and
+// src/rgw/rgw_account.cc (modify): requiring ID avoids falling back to name or
+// email lookup when those fields are intended as updates.
 func (client *Client) UpdateAccount(ctx context.Context, input UpdateAccountRequest) (Account, error) {
 	if ctx == nil {
 		return Account{}, errors.New("rgw: context must not be nil")
 	}
-	if strings.TrimSpace(input.ID) == "" && strings.TrimSpace(input.Name) == "" && strings.TrimSpace(input.Email) == "" {
-		return Account{}, errors.New("rgw: account ID, name, or email must not be empty")
+	if strings.TrimSpace(input.ID) == "" {
+		return Account{}, errors.New("rgw: account ID must not be empty")
 	}
-	query := accountIdentityQuery(input.ID, input.Tenant, input.Name)
+	query := url.Values{"id": {input.ID}}
+	setString(query, "name", input.Name)
 	setString(query, "email", input.Email)
 	setAccountLimits(query, input.MaxUsers, input.MaxRoles, input.MaxGroups, input.MaxAccessKeys, input.MaxBuckets)
 	return client.accountRequest(ctx, http.MethodPut, query)

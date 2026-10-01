@@ -150,6 +150,13 @@ All source paths below refer to that tag.
   `rgw/metadata.go`.
 - Account quotas: the REST parser uses `int32` limits while stored quota
   models use `int64`; preserve the distinct request representation.
+- Account updates: `src/rgw/rgw_rest_account.cc` parses the update parameters,
+  and `modify` in `src/rgw/rgw_account.cc` resolves the target by ID, then name,
+  then email before applying name/email updates. Require `UpdateAccountRequest.ID`
+  so update values cannot select a different target. Keep immutable Tenant out
+  of the update request; empty name/email and nil limits preserve stored values.
+  Integration coverage must verify missing-ID rejection without mutation and
+  name/email updates by ID with an unrelated account unchanged.
 - Quota size updates: `RGWOp_Quota_Set` in
   `src/rgw/driver/rados/rgw_rest_user.cc` and `RGWOp_Set_Bucket_Quota` in
   `src/rgw/driver/rados/rgw_rest_bucket.cc` parse `max-size` as bytes, then

@@ -113,6 +113,10 @@ error before sending a request.
 - [x] `SetAccountQuota` — `PUT /admin/account?quota`
 - [x] `DeleteAccount` — `DELETE /admin/account`
 
+`UpdateAccount` requires `ID`; use `GetAccount` to resolve it by tenant and name
+when needed. `Name` and `Email` are update values, with empty strings preserving
+stored values. Nil limits preserve stored values. An account's tenant is immutable.
+
 All quota setter requests express `MaxSize` in bytes. `SetAccountQuotaRequest`
 uses optional `int32` limits; user and named-bucket requests use optional `int64`
 limits. Nil settings preserve stored values, and negative limits mean unlimited.

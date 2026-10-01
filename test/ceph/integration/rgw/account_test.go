@@ -75,16 +75,53 @@ func TestRGWUpdateAccount(t *testing.T) {
 
 	client := rgwIntegrationClient(t)
 	ctx := integrationContext(t)
-	fixture, _ := createRGWAccountFixture(t, client, ctx)
+	fixture, original := createRGWAccountFixture(t, client, ctx)
+	otherFixture, other := createRGWAccountFixture(t, client, ctx)
+	for _, input := range []rgw.UpdateAccountRequest{
+		{Name: other.Name, MaxBuckets: new(int64(0))},
+		{Email: other.Email, MaxBuckets: new(int64(0))},
+		{ID: " ", Name: other.Name, Email: other.Email, MaxBuckets: new(int64(0))},
+	} {
+		_, err := client.UpdateAccount(ctx, input)
+		var apiErr *rgw.APIError
+		if err == nil || errors.As(err, &apiErr) {
+			t.Fatalf("missing ID error = %v, want local validation error", err)
+		}
+	}
+	unchanged, err := client.GetAccount(ctx, rgw.GetAccountRequest{ID: otherFixture.id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unchanged != other {
+		t.Fatalf("missing ID changed the account selected by name/email: %#v", unchanged)
+	}
+	name := uniqueResourceName(t, "updated-account")
+	email := name + "@example.invalid"
 	account, err := client.UpdateAccount(ctx, rgw.UpdateAccountRequest{
-		ID: fixture.id, Email: uniqueResourceName(t, "updated-account") + "@example.invalid",
+		ID: fixture.id, Name: name, Email: email,
 		MaxBuckets: new(int64(0)),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if account.ID != fixture.id || account.Email == "" || account.MaxBuckets != 0 {
+	if account.ID != fixture.id || account.Name != name || account.Email != email ||
+		account.Tenant != original.Tenant || account.MaxBuckets != 0 ||
+		account.MaxUsers != original.MaxUsers {
 		t.Fatalf("updated Admin Ops account = %#v", account)
+	}
+	stored, err := client.GetAccount(ctx, rgw.GetAccountRequest{ID: fixture.id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored != account {
+		t.Fatalf("stored updated account = %#v, want %#v", stored, account)
+	}
+	unchanged, err = client.GetAccount(ctx, rgw.GetAccountRequest{ID: otherFixture.id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unchanged != other {
+		t.Fatalf("ID update changed unrelated account: %#v", unchanged)
 	}
 }
 
