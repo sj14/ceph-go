@@ -119,6 +119,14 @@ All source paths below refer to that tag.
   (`RGWUserAdminOp_Key::create`) returns the complete collection of the selected
   key type, and `RGWAccessKeyPool::generate_key` derives the Swift identity from
   the user and subuser. Keep separate typed S3 and Swift methods and requests.
+- Subuser updates: `RGWOp_Subuser_Modify` in that REST source always calls
+  `set_perm`, even when `access` is omitted. `rgw_str_to_perm` in
+  `src/rgw/rgw_common.cc` maps empty access to no permissions, and
+  `RGWSubUserPool::execute_modify` in `rgw_user.cc` applies it. Require a nonnil
+  `UpdateSubuserRequest.Access`; a pointer to `SubuserAccessNone` explicitly
+  clears permissions. Send its empty wire value rather than dropping it.
+  Verify rejection without credential or permission changes, explicit access
+  during secret rotation, and deliberate permission clearing in integration tests.
 - Bucket listing: `src/rgw/driver/rados/rgw_rest_bucket.cc`
   (`RGWOp_Bucket_Info::execute`) does not parse an `account-id` listing filter.
   `rgw_bucket.cc` in the same directory resolves account membership from UID.

@@ -14,6 +14,9 @@ import (
 type SubuserAccess string
 
 const (
+	// SubuserAccessNone explicitly grants no permissions. Ceph's request value
+	// is empty; the corresponding response permission is "<none>".
+	SubuserAccessNone      SubuserAccess = ""
 	SubuserAccessRead      SubuserAccess = "read"
 	SubuserAccessWrite     SubuserAccess = "write"
 	SubuserAccessReadWrite SubuserAccess = "readwrite"
@@ -53,10 +56,12 @@ func (client *Client) CreateSubuser(ctx context.Context, input CreateSubuserRequ
 	return client.subuserRequest(ctx, http.MethodPut, query)
 }
 
+// UpdateSubuserRequest requires Access on every update, including credential
+// changes. Use a pointer to SubuserAccessNone to explicitly clear permissions.
 type UpdateSubuserRequest struct {
 	UID            string
 	Subuser        string
-	Access         SubuserAccess
+	Access         *SubuserAccess
 	KeyType        UserKeyType
 	SecretKey      string
 	GenerateSecret *bool
@@ -64,6 +69,13 @@ type UpdateSubuserRequest struct {
 
 // UpdateSubuser modifies a subuser through POST /admin/user?subuser and
 // returns all subusers belonging to the user.
+// Access must not be nil; Ceph treats an omitted access value as no permissions.
+//
+// Verified against Ceph v20.2.4:
+//   - src/rgw/driver/rados/rgw_rest_user.cc (RGWOp_Subuser_Modify)
+//   - src/rgw/driver/rados/rgw_user.h (RGWUserAdminOpState::set_perm)
+//   - src/rgw/driver/rados/rgw_user.cc (RGWSubUserPool::execute_modify)
+//   - src/rgw/rgw_common.cc (rgw_str_to_perm)
 func (client *Client) UpdateSubuser(ctx context.Context, input UpdateSubuserRequest) ([]Subuser, error) {
 	if ctx == nil {
 		return nil, errors.New("rgw: context must not be nil")
@@ -71,11 +83,14 @@ func (client *Client) UpdateSubuser(ctx context.Context, input UpdateSubuserRequ
 	if err := validateSubuser(input.UID, input.Subuser); err != nil {
 		return nil, err
 	}
+	if input.Access == nil {
+		return nil, errors.New("rgw: subuser access must be provided")
+	}
 	query := url.Values{
 		"subuser": {input.Subuser},
 		"uid":     {input.UID},
 	}
-	setString(query, "access", string(input.Access))
+	query.Set("access", string(*input.Access))
 	setString(query, "key-type", string(input.KeyType))
 	setString(query, "secret-key", input.SecretKey)
 	setBool(query, "generate-secret", input.GenerateSecret)

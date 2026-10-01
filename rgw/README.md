@@ -68,6 +68,11 @@ internally. Both return the user's complete collection of that key type after
 creation, including existing keys. Swift creation requires a subuser and has
 no `AccessKey` field because Ceph derives the identity from the user and subuser.
 
+`UpdateSubuser` requires an explicit `Access` on every update, including secret
+rotation. For example, use `Access: new(rgw.SubuserAccessReadWrite)` to retain
+read/write access, or `Access: new(rgw.SubuserAccessNone)` to clear permissions.
+Omitting `Access` returns a validation error before sending a request.
+
 ### Buckets
 
 - [x] `ListBucketNames` — `GET /admin/bucket?stats=false`, returns `[]string`
