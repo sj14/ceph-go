@@ -40,7 +40,7 @@ type MetadataUpdate struct {
 }
 
 type PutMetadataRequest struct {
-	Section    string
+	Section    MetadataSection
 	Key        string
 	Metadata   Metadata
 	UpdateType MetadataUpdateType
@@ -80,7 +80,7 @@ func (client *Client) PutMetadata(ctx context.Context, input PutMetadataRequest)
 }
 
 type DeleteMetadataRequest struct {
-	Section string
+	Section MetadataSection
 	Key     string
 }
 

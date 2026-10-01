@@ -18,7 +18,7 @@ func TestRGWPutMetadata(t *testing.T) {
 	for _, policy := range []rgw.MetadataUpdateType{
 		rgw.MetadataUpdateAlways, rgw.MetadataUpdateByVersion, rgw.MetadataUpdateByTimestamp,
 	} {
-		metadata, err := client.GetMetadata(ctx, rgw.GetMetadataRequest{Section: "user", Key: fixture.uid})
+		metadata, err := client.GetMetadata(ctx, rgw.GetMetadataRequest{Section: rgw.MetadataSectionUser, Key: fixture.uid})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -27,7 +27,7 @@ func TestRGWPutMetadata(t *testing.T) {
 		name := "Metadata update " + string(policy)
 		metadata.Data["display_name"] = name
 		update, err := client.PutMetadata(ctx, rgw.PutMetadataRequest{
-			Section: "user", Key: fixture.uid, Metadata: metadata, UpdateType: policy,
+			Section: rgw.MetadataSectionUser, Key: fixture.uid, Metadata: metadata, UpdateType: policy,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -35,7 +35,7 @@ func TestRGWPutMetadata(t *testing.T) {
 		if update.Status != rgw.MetadataUpdateApplied || update.Version != previousVersion {
 			t.Fatalf("metadata update = %#v, want applied and previous version %#v", update, previousVersion)
 		}
-		stored, err := client.GetMetadata(ctx, rgw.GetMetadataRequest{Section: "user", Key: fixture.uid})
+		stored, err := client.GetMetadata(ctx, rgw.GetMetadataRequest{Section: rgw.MetadataSectionUser, Key: fixture.uid})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -55,13 +55,13 @@ func TestRGWDeleteMetadata(t *testing.T) {
 	client := rgwIntegrationClient(t)
 	ctx := integrationContext(t)
 	fixture, _ := createRGWUserFixture(t, client, ctx)
-	if err := client.DeleteMetadata(ctx, rgw.DeleteMetadataRequest{Section: "user", Key: fixture.uid}); err != nil {
+	if err := client.DeleteMetadata(ctx, rgw.DeleteMetadataRequest{Section: rgw.MetadataSectionUser, Key: fixture.uid}); err != nil {
 		t.Fatal(err)
 	}
 	fixture.deleted = true
-	_, err := client.GetMetadata(ctx, rgw.GetMetadataRequest{Section: "user", Key: fixture.uid})
+	_, err := client.GetMetadata(ctx, rgw.GetMetadataRequest{Section: rgw.MetadataSectionUser, Key: fixture.uid})
 	requireRGWAPIStatus(t, err, http.StatusNotFound)
-	if err := client.DeleteMetadata(ctx, rgw.DeleteMetadataRequest{Section: "user", Key: fixture.uid}); err == nil {
+	if err := client.DeleteMetadata(ctx, rgw.DeleteMetadataRequest{Section: rgw.MetadataSectionUser, Key: fixture.uid}); err == nil {
 		t.Fatal("deleting missing metadata succeeded")
 	} else {
 		requireRGWAPIStatus(t, err, http.StatusNotFound)

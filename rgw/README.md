@@ -92,6 +92,21 @@ of an existing bucket; bucket creation remains an S3 operation.
 - [x] `PutMetadata` — `PUT /admin/metadata[/<section>]?key=...`
 - [x] `DeleteMetadata` — `DELETE /admin/metadata[/<section>]?key=...`
 
+`MetadataSection` provides constants for Ceph v20.2.4's registered sections:
+- `account`
+- `bucket`
+- `bucket.instance`
+- `group`
+- `otp`
+- `roles`
+- `topic`
+- `user`
+
+The empty section lists the metadata root. Explicit conversions such
+as `MetadataSection("new-section")` allow names from other Ceph versions.
+The registration and wire names are verified in
+`src/rgw/driver/rados/rgw_service.cc` and the handlers listed in `metadata.go`.
+
 Metadata writes and deletes require `metadata=write`. `PutMetadata` sends the
 same key/ver/mtime/data envelope returned by `GetMetadata` and decodes the
 `RGWX_UPDATE_STATUS` and `RGWX_UPDATE_VERSION` headers into `MetadataUpdate`.

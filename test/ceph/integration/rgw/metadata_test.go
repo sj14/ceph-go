@@ -15,12 +15,19 @@ func TestRGWListMetadataKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sections.Count == 0 || !containsString(sections.Keys, "user") {
-		t.Fatalf("metadata sections = %#v", sections)
+	for _, section := range []rgw.MetadataSection{
+		rgw.MetadataSectionAccount, rgw.MetadataSectionBucket,
+		rgw.MetadataSectionBucketInstance, rgw.MetadataSectionGroup,
+		rgw.MetadataSectionOTP, rgw.MetadataSectionRoles,
+		rgw.MetadataSectionTopic, rgw.MetadataSectionUser,
+	} {
+		if !containsString(sections.Keys, string(section)) {
+			t.Errorf("metadata sections missing %q: %#v", section, sections)
+		}
 	}
 
 	users, err := client.ListMetadataKeys(ctx, rgw.ListMetadataKeysRequest{
-		Section: "user", MaxEntries: new(int64(100)),
+		Section: rgw.MetadataSectionUser, MaxEntries: new(int64(100)),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -34,7 +41,7 @@ func TestRGWGetMetadata(t *testing.T) {
 	t.Parallel()
 
 	metadata, err := rgwIntegrationClient(t).GetMetadata(integrationContext(t), rgw.GetMetadataRequest{
-		Section: "user", Key: "ceph-go-admin",
+		Section: rgw.MetadataSectionUser, Key: "ceph-go-admin",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -49,7 +56,7 @@ func TestRGWGetLocalMetadata(t *testing.T) {
 	t.Parallel()
 
 	metadata, err := rgwIntegrationClient(t).GetLocalMetadata(integrationContext(t), rgw.GetLocalMetadataRequest{
-		Section: "user",
+		Section: rgw.MetadataSectionUser,
 	})
 	if err != nil {
 		t.Fatal(err)

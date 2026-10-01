@@ -11,6 +11,26 @@ import (
 	"time"
 )
 
+// MetadataSection identifies a registered RGW metadata handler. The empty value
+// selects the metadata root when listing sections. Explicit conversions allow
+// section names introduced by other Ceph versions.
+//
+// Verified against Ceph v20.2.4: src/rgw/rgw_metadata.cc and
+// src/rgw/driver/rados/{rgw_service.cc,rgw_user.cc,rgw_bucket.cc,rgw_otp.cc,
+// role.cc,account.cc,group.cc,topic.cc} (registration and get_type methods).
+type MetadataSection string
+
+const (
+	MetadataSectionAccount        MetadataSection = "account"
+	MetadataSectionBucket         MetadataSection = "bucket"
+	MetadataSectionBucketInstance MetadataSection = "bucket.instance"
+	MetadataSectionGroup          MetadataSection = "group"
+	MetadataSectionOTP            MetadataSection = "otp"
+	MetadataSectionRoles          MetadataSection = "roles"
+	MetadataSectionTopic          MetadataSection = "topic"
+	MetadataSectionUser           MetadataSection = "user"
+)
+
 // ObjectVersion is Ceph's obj_version representation shared by metadata and
 // metadata-log responses.
 type ObjectVersion struct {
@@ -43,7 +63,7 @@ type Metadata struct {
 }
 
 type ListMetadataKeysRequest struct {
-	Section    string
+	Section    MetadataSection
 	Marker     string
 	MaxEntries *int64
 }
@@ -76,7 +96,7 @@ func (client *Client) ListMetadataKeys(ctx context.Context, input ListMetadataKe
 }
 
 type GetMetadataRequest struct {
-	Section string
+	Section MetadataSection
 	Key     string
 }
 
@@ -93,7 +113,7 @@ func (client *Client) GetMetadata(ctx context.Context, input GetMetadataRequest)
 }
 
 type GetLocalMetadataRequest struct {
-	Section string
+	Section MetadataSection
 }
 
 // GetLocalMetadata retrieves the authenticated administrative user's metadata
@@ -102,13 +122,13 @@ func (client *Client) GetLocalMetadata(ctx context.Context, input GetLocalMetada
 	if ctx == nil {
 		return Metadata{}, errors.New("rgw: context must not be nil")
 	}
-	if strings.TrimSpace(input.Section) == "" {
+	if strings.TrimSpace(string(input.Section)) == "" {
 		return Metadata{}, errors.New("rgw: metadata section must not be empty")
 	}
 	return client.getMetadata(ctx, input.Section, url.Values{"myself": {""}})
 }
 
-func (client *Client) getMetadata(ctx context.Context, section string, query url.Values) (Metadata, error) {
+func (client *Client) getMetadata(ctx context.Context, section MetadataSection, query url.Values) (Metadata, error) {
 	body, request, err := client.metadataRequest(ctx, section, query)
 	if err != nil {
 		return Metadata{}, err
@@ -120,7 +140,7 @@ func (client *Client) getMetadata(ctx context.Context, section string, query url
 	return result, nil
 }
 
-func (client *Client) metadataRequest(ctx context.Context, section string, query url.Values) ([]byte, *http.Request, error) {
+func (client *Client) metadataRequest(ctx context.Context, section MetadataSection, query url.Values) ([]byte, *http.Request, error) {
 	resource, err := metadataResource(section)
 	if err != nil {
 		return nil, nil, err
@@ -133,14 +153,14 @@ func (client *Client) metadataRequest(ctx context.Context, section string, query
 	return body, request, err
 }
 
-func metadataResource(section string) (string, error) {
-	section = strings.TrimSpace(section)
-	if section == "." || section == ".." || strings.ContainsAny(section, "/?#") {
+func metadataResource(section MetadataSection) (string, error) {
+	name := strings.TrimSpace(string(section))
+	if name == "." || name == ".." || strings.ContainsAny(name, "/?#") {
 		return "", errors.New("rgw: metadata section must not be a path segment, query, or fragment")
 	}
 	resource := "metadata"
-	if section != "" {
-		resource += "/" + section
+	if name != "" {
+		resource += "/" + name
 	}
 	return resource, nil
 }

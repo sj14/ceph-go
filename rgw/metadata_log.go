@@ -55,7 +55,7 @@ type MetadataLogEntryList struct {
 
 type MetadataLogEntry struct {
 	ID        string          `json:"id"`
-	Section   string          `json:"section"`
+	Section   MetadataSection `json:"section"`
 	Name      string          `json:"name"`
 	Timestamp string          `json:"timestamp"`
 	Data      MetadataLogData `json:"data"`
