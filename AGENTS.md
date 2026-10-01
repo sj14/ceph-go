@@ -57,6 +57,9 @@ separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
   exclusive fields, especially for resource-specific versus global mutations.
   Do not expose requests whose target flags silently discard supplied identifiers.
   Share the update values while keeping target fields specific to each operation.
+- Require an explicit setting for actions whose omitted state triggers a
+  mutation. A nullable setting must not silently mean "leave unchanged" when
+  Ceph instead applies a default; validate its presence before sending.
 - Return decoded domain models and errors from endpoint methods. Keep HTTP status, headers, and raw successful response bodies internal unless an endpoint exposes meaningful transport metadata that callers need.
 - Return single resources by value as `(Resource, error)`, collections as `([]Resource, error)`, and actions without a meaningful result as `error`. Use pointers within models only for nullable fields or when absence must be distinguishable from a zero value.
 - Preserve Ceph's actual HTTP method, route, media type, parameter location, parameter names, and response status.
@@ -118,6 +121,12 @@ All source paths below refer to that tag.
   `rgw_bucket.cc` in the same directory resolves account membership from UID.
   Do not reintroduce an ineffective `AccountID` filter or a public `Stats` flag;
   the name-only and detailed methods must retain fixed return types.
+- Bucket synchronization: `RGWOp_Sync_Bucket` in the same REST source defaults
+  an omitted or empty `sync` value to true. `RGWBucket::sync` in `rgw_bucket.cc`
+  changes `BUCKET_DATASYNC_DISABLED` and writes the bucket metadata. Require
+  `SetBucketSyncRequest.Enabled` and reject nil before sending. Integration
+  coverage must verify explicit disable/enable and rejection without changing
+  disabled state, using the bucket-index log's `SyncStopped` value.
 - Metadata sections: registration and wire names are in
   `src/rgw/driver/rados/rgw_service.cc` and the handlers listed in
   `rgw/metadata.go`.

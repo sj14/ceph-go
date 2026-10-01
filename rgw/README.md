@@ -91,6 +91,10 @@ UID lists all buckets. For an account member, Ceph lists that account's buckets.
 `ListBuckets` fetches details and statistics; use `ListBucketNames` for the
 cheaper name-only listing.
 
+`SetBucketSync` requires `Enabled: new(true)` to enable synchronization or
+`Enabled: new(false)` to disable it. Omitting `Enabled` returns a validation
+error before sending a request.
+
 ### Accounts
 
 - [x] `GetAccount` — `GET /admin/account`
