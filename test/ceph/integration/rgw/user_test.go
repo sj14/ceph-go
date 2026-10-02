@@ -104,7 +104,7 @@ func TestRGWGetUserByAccessKey(t *testing.T) {
 		accessKey := keys[0].AccessKey
 		for _, stats := range []*bool{nil, new(false), new(true)} {
 			user, err := client.GetUserByAccessKey(ctx, rgw.GetUserByAccessKeyRequest{
-				AccessKey: accessKey, Stats: stats, Sync: stats,
+				AccessKey: accessKey, Stats: stats,
 			})
 			if err != nil {
 				t.Fatal(err)

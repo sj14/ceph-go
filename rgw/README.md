@@ -66,8 +66,16 @@ legacy and generation-aware data-log notification formats.
 - [x] `DeleteUserCapabilities` — `DELETE /admin/user?caps`
 
 `GetUser` requires `UID`; `GetUserByAccessKey` requires an S3 `AccessKey` and
-returns its owner. Both support `Stats` and `Sync`. Statistics are absent unless
-requested with `Stats: new(true)`.
+returns its owner. Both include statistics when `Stats: new(true)` is set;
+otherwise statistics are absent. Use `RefreshStats: new(true)` to update stored
+statistics before reading. For example, setting both flags returns the user
+with refreshed statistics in one request.
+
+`RefreshStats` walks the owner's buckets and updates server-side statistics;
+it can take longer for owners with many buckets. Nil or false skips the refresh.
+The flags are independent: refreshing without `Stats: new(true)` updates
+statistics but omits them from the response. For account members, the statistics
+and refresh cover the entire account.
 
 `CreateS3Key` and `CreateSwiftKey` use separate requests and fix the key type
 internally. Both return the user's complete collection of that key type after

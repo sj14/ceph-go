@@ -57,6 +57,12 @@ separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
   exclusive fields, especially for resource-specific versus global mutations.
   Do not expose requests whose target flags silently discard supplied identifiers.
   Share the update values while keeping target fields specific to each operation.
+- An optional additional operation does not automatically require a separate
+  method when the target and response model remain unambiguous. Prefer a clearly
+  named opt-in flag with documented side effects when it preserves a useful
+  combined server request. Split operations when needed for predictable response
+  models or unambiguous targets, rather than merely because a getter can perform
+  an explicitly requested update.
 - Require an explicit setting for actions whose omitted state triggers a
   mutation. A nullable setting must not silently mean "leave unchanged" when
   Ceph instead applies a default; validate its presence before sending.
@@ -124,6 +130,22 @@ All source paths below refer to that tag.
   An unknown key leaves an anonymous UID; `RGWAccessKeyPool::init` rejects it
   with EINVAL before `info` reaches its missing-user check. Preserve the
   resulting HTTP 400 `InvalidArgument` error.
+- User statistics: `RGWOp_User_Info` in that REST source parses stats/sync
+  independently. `RGWUserAdminOp_User::info` in `rgw_user.cc` selects account
+  ownership for account members, calls `rgw_sync_all_stats` when sync is true,
+  then loads and formats statistics when stats is true. `rgw_sync_all_stats` in
+  `src/rgw/rgw_user.cc` walks the owner's buckets, synchronizes each bucket's
+  owner statistics, checks shard counts, and completes the statistics flush.
+  Expose the wire sync parameter as optional `RefreshStats` on both user getters,
+  keeping statistics refresh and inclusion independent. Nil/false does not
+  refresh; true updates stored statistics even when Stats is nil/false. Keep
+  the shared User response and nullable Stats field, and allow user details
+  and refreshed statistics to be obtained in one request.
+  Preserve the GET route and its read-capability authorization despite its
+  side effects. Document account-wide scope and per-bucket work. Integration
+  tests must verify stored counts after object creation/deletion, ordinary
+  getters, missing selector rejection, account-wide counts through a member UID,
+  and refresh without including statistics through both lookup methods.
 - Key creation: `src/rgw/driver/rados/rgw_rest_user.cc` (`RGWOp_Key_Create`)
   parses the request. In the same directory, `rgw_user.cc`
   (`RGWUserAdminOp_Key::create`) returns the complete collection of the selected

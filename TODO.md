@@ -5,13 +5,6 @@ These are checks to perform, not confirmed defects. Address one issue at a time;
 present the options when multiple fixes are reasonable, and wait for the user's
 OK before continuing to the next issue.
 
-## RGW follow-up checks
-
-- [ ] Review `GetUserRequest.Sync` and `GetUserByAccessKeyRequest.Sync`: these
-  getters can update stored statistics, including account-wide statistics for
-  account members. Decide whether clearer naming/documentation or a separate
-  synchronization action would make the side effect sufficiently explicit.
-
 ## Dashboard (`mgr`) checks
 
 - [ ] Review user list/detail response completeness, optional statistics, and
