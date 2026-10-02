@@ -9,15 +9,15 @@ import (
 )
 
 // SetBucketSyncRequest identifies a bucket and requires an explicit sync state.
-// Enabled must not be nil.
+// Sync must not be nil.
 type SetBucketSyncRequest struct {
-	Name    string
-	Tenant  string
-	Enabled *bool
+	Name   string
+	Tenant string
+	Sync   *bool
 }
 
 // SetBucketSync enables or disables bucket synchronization through
-// PUT /admin/bucket?sync. Enabled must be provided; omission returns a validation
+// PUT /admin/bucket?sync. Sync must be provided; omission returns a validation
 // error before any request is sent.
 //
 // Verified against Ceph v20.2.4:
@@ -30,14 +30,14 @@ func (client *Client) SetBucketSync(ctx context.Context, input SetBucketSyncRequ
 	if strings.TrimSpace(input.Name) == "" {
 		return errors.New("rgw: bucket name must not be empty")
 	}
-	if input.Enabled == nil {
-		return errors.New("rgw: bucket sync enabled must be provided")
+	if input.Sync == nil {
+		return errors.New("rgw: bucket sync must be provided")
 	}
 	query := url.Values{
 		"bucket": {input.Name},
 		"sync":   {""},
 	}
 	setString(query, "tenant", input.Tenant)
-	setBool(query, "sync", input.Enabled)
+	setBool(query, "sync", input.Sync)
 	return client.bucketAction(ctx, http.MethodPut, query)
 }

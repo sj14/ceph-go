@@ -12,7 +12,7 @@ import (
 
 type BucketIndexCheck struct {
 	InvalidMultipartEntries []string `json:"invalid_multipart_entries"`
-	// Objects is present only when ReconcileObjects is enabled. Ceph
+	// Objects is present only when CheckObjects is enabled. Ceph
 	// emits an object containing repeated "object" keys, so retain its JSON
 	// rather than decoding into a map that would discard entries.
 	Objects json.RawMessage        `json:"objects,omitempty"`
@@ -30,18 +30,18 @@ type BucketIndexHeader struct {
 
 type CheckBucketIndexRequest struct {
 	Name string
-	// Repair removes invalid multipart index entries and rebuilds index statistics.
+	// Fix removes invalid multipart index entries and rebuilds index statistics.
 	// False reports inconsistencies without repairing them.
-	Repair bool
-	// ReconcileObjects also reconciles object index entries against stored objects.
-	// It requires Repair=true; false skips that scan.
-	ReconcileObjects bool
+	Fix bool
+	// CheckObjects also reconciles object index entries against stored objects.
+	// It requires Fix=true; false skips that scan.
+	CheckObjects bool
 }
 
 // CheckBucketIndex checks a bucket index through GET /admin/bucket?index.
-// Repair opts into removing invalid multipart index entries and rebuilding index
-// statistics. ReconcileObjects additionally reconciles object entries and
-// requires Repair. Both default to false. The report's existing/calculated
+// Fix opts into removing invalid multipart index entries and rebuilding index
+// statistics. CheckObjects additionally reconciles object entries and
+// requires Fix. Both default to false. The report's existing/calculated
 // headers are captured before rebuilding.
 // Ceph requires the buckets=write capability even without repair.
 //
@@ -56,15 +56,15 @@ func (client *Client) CheckBucketIndex(ctx context.Context, input CheckBucketInd
 	if strings.TrimSpace(input.Name) == "" {
 		return BucketIndexCheck{}, errors.New("rgw: bucket name must not be empty")
 	}
-	if input.ReconcileObjects && !input.Repair {
+	if input.CheckObjects && !input.Fix {
 		return BucketIndexCheck{}, errors.New("rgw: object reconciliation requires index repair")
 	}
 	query := url.Values{
 		"bucket": {input.Name},
 		"index":  {""},
 	}
-	setBool(query, "fix", &input.Repair)
-	setBool(query, "check-objects", &input.ReconcileObjects)
+	setBool(query, "fix", &input.Fix)
+	setBool(query, "check-objects", &input.CheckObjects)
 	body, request, err := client.bucketRequest(ctx, http.MethodGet, query)
 	if err != nil {
 		return BucketIndexCheck{}, err

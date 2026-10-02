@@ -112,13 +112,13 @@ func (client *Client) GetMetadata(ctx context.Context, input GetMetadataRequest)
 	return client.getMetadata(ctx, input.Section, url.Values{"key": {input.Key}})
 }
 
-type GetLocalMetadataRequest struct {
+type GetMetadataMyselfRequest struct {
 	Section MetadataSection
 }
 
-// GetLocalMetadata retrieves the authenticated administrative user's metadata
+// GetMetadataMyself retrieves the authenticated administrative user's metadata
 // in a section through GET /admin/metadata/<section>?myself.
-func (client *Client) GetLocalMetadata(ctx context.Context, input GetLocalMetadataRequest) (Metadata, error) {
+func (client *Client) GetMetadataMyself(ctx context.Context, input GetMetadataMyselfRequest) (Metadata, error) {
 	if ctx == nil {
 		return Metadata{}, errors.New("rgw: context must not be nil")
 	}

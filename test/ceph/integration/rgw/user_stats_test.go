@@ -48,12 +48,12 @@ func TestRGWRefreshUserStats(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, invalidUID := range []string{"", " "} {
-				_, err := client.GetUser(ctx, rgw.GetUserRequest{UID: invalidUID, RefreshStats: new(true)})
+				_, err := client.GetUser(ctx, rgw.GetUserRequest{UID: invalidUID, Sync: new(true)})
 				var apiErr *rgw.APIError
 				if err == nil || errors.As(err, &apiErr) {
 					t.Fatalf("missing UID error = %v, want local validation error", err)
 				}
-				_, err = client.GetUserByAccessKey(ctx, rgw.GetUserByAccessKeyRequest{AccessKey: invalidUID, RefreshStats: new(true)})
+				_, err = client.GetUserByAccessKey(ctx, rgw.GetUserByAccessKeyRequest{AccessKey: invalidUID, Sync: new(true)})
 				if err == nil || errors.As(err, &apiErr) {
 					t.Fatalf("missing access key error = %v, want local validation error", err)
 				}
@@ -73,11 +73,11 @@ func TestRGWRefreshUserStats(t *testing.T) {
 				var refreshed rgw.User
 				if deleted {
 					refreshed, err = client.GetUserByAccessKey(ctx, rgw.GetUserByAccessKeyRequest{
-						AccessKey: keys[0].AccessKey, Stats: new(true), RefreshStats: new(true),
+						AccessKey: keys[0].AccessKey, Stats: new(true), Sync: new(true),
 					})
 				} else {
 					refreshed, err = client.GetUser(ctx, rgw.GetUserRequest{
-						UID: uid, Stats: new(true), RefreshStats: new(true),
+						UID: uid, Stats: new(true), Sync: new(true),
 					})
 				}
 				if err != nil {
@@ -110,10 +110,10 @@ func TestRGWRefreshUserStats(t *testing.T) {
 				var refreshed rgw.User
 				if byAccessKey {
 					refreshed, err = client.GetUserByAccessKey(ctx, rgw.GetUserByAccessKeyRequest{
-						AccessKey: keys[0].AccessKey, Stats: new(false), RefreshStats: new(true),
+						AccessKey: keys[0].AccessKey, Stats: new(false), Sync: new(true),
 					})
 				} else {
-					refreshed, err = client.GetUser(ctx, rgw.GetUserRequest{UID: uid, RefreshStats: new(true)})
+					refreshed, err = client.GetUser(ctx, rgw.GetUserRequest{UID: uid, Sync: new(true)})
 				}
 				if err != nil {
 					t.Fatal(err)
@@ -121,7 +121,7 @@ func TestRGWRefreshUserStats(t *testing.T) {
 				if refreshed.ID != uid || refreshed.Stats != nil {
 					t.Fatalf("refresh without statistics returned %#v", refreshed)
 				}
-				stored, err := client.GetUser(ctx, rgw.GetUserRequest{UID: uid, Stats: new(true), RefreshStats: new(false)})
+				stored, err := client.GetUser(ctx, rgw.GetUserRequest{UID: uid, Stats: new(true), Sync: new(false)})
 				if err != nil {
 					t.Fatal(err)
 				}

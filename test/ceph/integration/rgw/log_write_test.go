@@ -117,7 +117,7 @@ func TestRGWTrimBucketIndexLog(t *testing.T) {
 	// Single-site RGW does not log ordinary S3 writes for replication. Stop and
 	// restart this fixture's sync to create real stop/resync log entries.
 	for _, enabled := range []bool{false, true} {
-		if err := client.SetBucketSync(ctx, rgw.SetBucketSyncRequest{Name: fixture.name, Enabled: &enabled}); err != nil {
+		if err := client.SetBucketSync(ctx, rgw.SetBucketSyncRequest{Name: fixture.name, Sync: &enabled}); err != nil {
 			t.Fatal(err)
 		}
 	}

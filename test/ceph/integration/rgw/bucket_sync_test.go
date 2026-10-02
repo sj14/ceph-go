@@ -30,7 +30,7 @@ func TestRGWSetBucketSync(t *testing.T) {
 		}
 	}
 	if err := client.SetBucketSync(ctx, rgw.SetBucketSyncRequest{
-		Name: fixture.name, Enabled: new(false),
+		Name: fixture.name, Sync: new(false),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -38,11 +38,11 @@ func TestRGWSetBucketSync(t *testing.T) {
 	err = client.SetBucketSync(ctx, rgw.SetBucketSyncRequest{Name: fixture.name})
 	var apiErr *rgw.APIError
 	if err == nil || errors.As(err, &apiErr) {
-		t.Fatalf("omitted Enabled error = %v, want local validation error", err)
+		t.Fatalf("omitted Sync error = %v, want local validation error", err)
 	}
 	checkSyncStopped(true)
 	if err := client.SetBucketSync(ctx, rgw.SetBucketSyncRequest{
-		Name: fixture.name, Enabled: new(true),
+		Name: fixture.name, Sync: new(true),
 	}); err != nil {
 		t.Fatal(err)
 	}

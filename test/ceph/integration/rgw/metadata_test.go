@@ -52,10 +52,10 @@ func TestRGWGetMetadata(t *testing.T) {
 	}
 }
 
-func TestRGWGetLocalMetadata(t *testing.T) {
+func TestRGWGetMetadataMyself(t *testing.T) {
 	t.Parallel()
 
-	metadata, err := rgwIntegrationClient(t).GetLocalMetadata(integrationContext(t), rgw.GetLocalMetadataRequest{
+	metadata, err := rgwIntegrationClient(t).GetMetadataMyself(integrationContext(t), rgw.GetMetadataMyselfRequest{
 		Section: rgw.MetadataSectionUser,
 	})
 	if err != nil {

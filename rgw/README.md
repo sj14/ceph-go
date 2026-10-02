@@ -67,11 +67,11 @@ legacy and generation-aware data-log notification formats.
 
 `GetUser` requires `UID`; `GetUserByAccessKey` requires an S3 `AccessKey` and
 returns its owner. Both include statistics when `Stats: new(true)` is set;
-otherwise statistics are absent. Use `RefreshStats: new(true)` to update stored
+otherwise statistics are absent. Use `Sync: new(true)` to update stored
 statistics before reading. For example, setting both flags returns the user
 with refreshed statistics in one request.
 
-`RefreshStats` walks the owner's buckets and updates server-side statistics;
+`Sync` walks the owner's buckets and updates server-side statistics;
 it can take longer for owners with many buckets. Nil or false skips the refresh.
 The flags are independent: refreshing without `Stats: new(true)` updates
 statistics but omits them from the response. For account members, the statistics
@@ -131,16 +131,16 @@ cheaper name-only listing.
 owner and ACL grants. The object getter requires both `Bucket` and `Object`.
 S3 bucket policy documents use a separate S3 API.
 
-`CheckBucketIndex` reports index inconsistencies. Set `Repair: true` to also
+`CheckBucketIndex` reports index inconsistencies. Set `Fix: true` to also
 remove invalid multipart index entries and rebuild index statistics. Set
-`ReconcileObjects: true` with `Repair: true` to additionally reconcile object
+`CheckObjects: true` with `Fix: true` to additionally reconcile object
 entries; reconciliation without repair is rejected before sending a request.
 Both options default to false. The method requires `buckets=write` and returns
 a `BucketIndexCheck` report; `Objects` is present only when reconciliation is
 requested. The report's headers describe the index before statistics rebuilding.
 
-`SetBucketSync` requires `Enabled: new(true)` to enable synchronization or
-`Enabled: new(false)` to disable it. Omitting `Enabled` returns a validation
+`SetBucketSync` requires `Sync: new(true)` to enable synchronization or
+`Sync: new(false)` to disable it. Omitting `Sync` returns a validation
 error before sending a request.
 
 ### Accounts
@@ -183,7 +183,7 @@ share `GetUsageRequest` filters.
 
 - [x] `ListMetadataKeys` — `GET /admin/metadata[/<section>]`
 - [x] `GetMetadata` — `GET /admin/metadata[/<section>]?key=...`
-- [x] `GetLocalMetadata` — `GET /admin/metadata/<section>?myself`
+- [x] `GetMetadataMyself` — `GET /admin/metadata/<section>?myself`
 - [x] `PutMetadata` — `PUT /admin/metadata[/<section>]?key=...`
 - [x] `DeleteMetadata` — `DELETE /admin/metadata[/<section>]?key=...`
 

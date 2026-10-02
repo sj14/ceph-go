@@ -26,6 +26,12 @@ separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
 ## Go implementation
 
 - Keep the public API idiomatic and context-aware.
+- Prefer public method and field names that follow Ceph's source terminology
+  and parameter names when they make sense in Go. Apply normal Go naming
+  conventions, and explain behavior, defaults, dependencies, and side effects
+  in comments rather than renaming understandable Ceph terms. For example,
+  retain `Sync`, `Fix`, and `CheckObjects`. Choose a different name when the
+  source name would misrepresent the library's operation or domain concept.
 - Keep Dashboard and direct Admin Ops transports in the `mgr` and `rgw`
   packages respectively. Do not silently switch an operation between
   them: their authentication, authorization, errors, and response semantics
@@ -58,8 +64,9 @@ separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
   Do not expose requests whose target flags silently discard supplied identifiers.
   Share the update values while keeping target fields specific to each operation.
 - An optional additional operation does not automatically require a separate
-  method when the target and response model remain unambiguous. Prefer a clearly
-  named opt-in flag with documented side effects when it preserves a useful
+  method when the target and response model remain unambiguous. Prefer an
+  opt-in flag named consistently with Ceph and with documented side effects
+  when it preserves a useful
   combined server request. Split operations when needed for predictable response
   models or unambiguous targets, rather than merely because a getter can perform
   an explicitly requested update.
@@ -136,7 +143,7 @@ All source paths below refer to that tag.
   then loads and formats statistics when stats is true. `rgw_sync_all_stats` in
   `src/rgw/rgw_user.cc` walks the owner's buckets, synchronizes each bucket's
   owner statistics, checks shard counts, and completes the statistics flush.
-  Expose the wire sync parameter as optional `RefreshStats` on both user getters,
+  Expose the wire sync parameter as optional `Sync` on both user getters,
   keeping statistics refresh and inclusion independent. Nil/false does not
   refresh; true updates stored statistics even when Stats is nil/false. Keep
   the shared User response and nullable Stats field, and allow user details
@@ -193,7 +200,7 @@ All source paths below refer to that tag.
 - Bucket synchronization: `RGWOp_Sync_Bucket` in the same REST source defaults
   an omitted or empty `sync` value to true. `RGWBucket::sync` in `rgw_bucket.cc`
   changes `BUCKET_DATASYNC_DISABLED` and writes the bucket metadata. Require
-  `SetBucketSyncRequest.Enabled` and reject nil before sending. Integration
+  `SetBucketSyncRequest.Sync` and reject nil before sending. Integration
   coverage must verify explicit disable/enable and rejection without changing
   disabled state, using the bucket-index log's `SyncStopped` value.
 - ACL reads: `RGWOp_Get_Policy` in that REST source and `RGWBucket::get_policy`
@@ -211,7 +218,7 @@ All source paths below refer to that tag.
   `RGWBucket::check_bad_index_multipart/check_object_index/check_index` in
   `rgw_bucket.cc` remove invalid multipart index entries, reconcile object
   entries, and rebuild index statistics when fixing. Expose optional boolean
-  `Repair` and `ReconcileObjects` settings on `CheckBucketIndex`, mapping to fix
+  `Fix` and `CheckObjects` settings on `CheckBucketIndex`, mapping to fix
   and check-objects respectively; both default to false. Object reconciliation
   requires repair in `RGWBucket::check_object_index`: reject that invalid
   combination locally before any multipart index mutation can occur. Keep one

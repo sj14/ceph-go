@@ -210,12 +210,14 @@ func (client *Client) ListUsers(ctx context.Context, input ListUsersRequest) (Us
 }
 
 // GetUserRequest identifies a user by UID. Stats includes storage statistics.
-// RefreshStats updates stored statistics before reading, independently of Stats.
+// Sync updates stored statistics before reading, independently of Stats.
 // For account members, both flags apply to account-wide statistics.
 type GetUserRequest struct {
-	UID          string
-	Stats        *bool
-	RefreshStats *bool
+	UID   string
+	Stats *bool
+	// Sync refreshes server-side statistics before reading. Nil or false skips
+	// the refresh. Set Stats=true as well to include the refreshed statistics.
+	Sync *bool
 }
 
 // GetUser retrieves a user by UID directly through GET /admin/user.
@@ -224,26 +226,28 @@ type GetUserRequest struct {
 // Verified against Ceph v20.2.4's src/rgw/driver/rados/rgw_rest_user.cc
 // (RGWOp_User_Info) and rgw_user.cc (RGWUser::init and
 // RGWUserAdminOp_User::info), plus src/rgw/rgw_user.cc (rgw_sync_all_stats).
-// RefreshStats=true walks the owner's buckets and updates server-side statistics.
+// Sync=true walks the owner's buckets and updates server-side statistics.
 func (client *Client) GetUser(ctx context.Context, input GetUserRequest) (User, error) {
-	return client.getUser(ctx, "uid", input.UID, input.Stats, input.RefreshStats)
+	return client.getUser(ctx, "uid", input.UID, input.Stats, input.Sync)
 }
 
 // GetUserByAccessKeyRequest identifies a user by one of its S3 access keys.
-// Stats includes storage statistics. RefreshStats updates stored statistics
+// Stats includes storage statistics. Sync updates stored statistics
 // before reading, independently of Stats. For account members, both flags apply
 // to account-wide statistics.
 type GetUserByAccessKeyRequest struct {
-	AccessKey    string
-	Stats        *bool
-	RefreshStats *bool
+	AccessKey string
+	Stats     *bool
+	// Sync refreshes server-side statistics before reading. Nil or false skips
+	// the refresh. Set Stats=true as well to include the refreshed statistics.
+	Sync *bool
 }
 
 // GetUserByAccessKey retrieves the owner of an S3 access key directly through
 // GET /admin/user?access-key=.... AccessKey is required.
-// RefreshStats=true walks the owner's buckets and updates server-side statistics.
+// Sync=true walks the owner's buckets and updates server-side statistics.
 func (client *Client) GetUserByAccessKey(ctx context.Context, input GetUserByAccessKeyRequest) (User, error) {
-	return client.getUser(ctx, "access-key", input.AccessKey, input.Stats, input.RefreshStats)
+	return client.getUser(ctx, "access-key", input.AccessKey, input.Stats, input.Sync)
 }
 
 func (client *Client) getUser(ctx context.Context, selector, value string, stats, refreshStats *bool) (User, error) {
