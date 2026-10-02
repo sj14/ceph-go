@@ -26,7 +26,7 @@ func TestRGWCheckBucketIndex(t *testing.T) {
 	}
 }
 
-func TestRGWRepairBucketIndex(t *testing.T) {
+func TestRGWCheckBucketIndexWithRepair(t *testing.T) {
 	t.Parallel()
 	client := rgwIntegrationClient(t)
 	ctx := integrationContext(t)
@@ -38,7 +38,7 @@ func TestRGWRepairBucketIndex(t *testing.T) {
 	}
 	for _, name := range []string{"", " "} {
 		_, checkErr := client.CheckBucketIndex(ctx, rgw.CheckBucketIndexRequest{Name: name})
-		_, repairErr := client.RepairBucketIndex(ctx, rgw.RepairBucketIndexRequest{Name: name, CheckObjects: true})
+		_, repairErr := client.CheckBucketIndex(ctx, rgw.CheckBucketIndexRequest{Name: name, Repair: true, ReconcileObjects: true})
 		for _, err := range []error{checkErr, repairErr} {
 			var apiErr *rgw.APIError
 			if err == nil || errors.As(err, &apiErr) {
@@ -46,20 +46,25 @@ func TestRGWRepairBucketIndex(t *testing.T) {
 			}
 		}
 	}
-	for _, checkObjects := range []bool{false, true} {
-		result, err := client.RepairBucketIndex(ctx, rgw.RepairBucketIndexRequest{
-			Name: fixture.name, CheckObjects: checkObjects,
+	_, err := client.CheckBucketIndex(ctx, rgw.CheckBucketIndexRequest{Name: fixture.name, ReconcileObjects: true})
+	var apiErr *rgw.APIError
+	if err == nil || errors.As(err, &apiErr) {
+		t.Fatalf("reconciliation without repair error = %v, want local validation error", err)
+	}
+	for _, reconcileObjects := range []bool{false, true} {
+		result, err := client.CheckBucketIndex(ctx, rgw.CheckBucketIndexRequest{
+			Name: fixture.name, Repair: true, ReconcileObjects: reconcileObjects,
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
 		if result.InvalidMultipartEntries == nil || len(result.InvalidMultipartEntries) != 0 ||
 			result.Result.Existing.Usage == nil || result.Result.Calculated.Usage == nil ||
-			(result.Objects != nil) != checkObjects {
-			t.Fatalf("repair report with CheckObjects=%v: %#v", checkObjects, result)
+			(result.Objects != nil) != reconcileObjects {
+			t.Fatalf("repair report with ReconcileObjects=%v: %#v", reconcileObjects, result)
 		}
 		for _, object := range objects {
-			if checkObjects && !bytes.Contains(result.Objects, []byte(object)) {
+			if reconcileObjects && !bytes.Contains(result.Objects, []byte(object)) {
 				t.Fatalf("object reconciliation report %s omitted %q", result.Objects, object)
 			}
 			status, body := s3Request(t, ctx, http.MethodGet, fixture.name+"/"+object, nil)

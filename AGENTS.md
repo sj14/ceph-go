@@ -210,15 +210,17 @@ All source paths below refer to that tag.
   `buckets=write` even with `fix=false`. `RGWBucketAdminOp::check_index` and
   `RGWBucket::check_bad_index_multipart/check_object_index/check_index` in
   `rgw_bucket.cc` remove invalid multipart index entries, reconcile object
-  entries, and rebuild index statistics when fixing. Separate `CheckBucketIndex`
-  (internal fix=false, check-objects=false) from `RepairBucketIndex` (fix=true),
-  with optional object reconciliation only on the repair request. Share the
+  entries, and rebuild index statistics when fixing. Expose optional boolean
+  `Repair` and `ReconcileObjects` settings on `CheckBucketIndex`, mapping to fix
+  and check-objects respectively; both default to false. Object reconciliation
+  requires repair in `RGWBucket::check_object_index`: reject that invalid
+  combination locally before any multipart index mutation can occur. Keep one
   check report: existing/calculated headers are captured before rebuilding.
   `dump_bucket_index` emits repeated "object" keys inside an object; retain
   nullable raw JSON rather than losing entries through map decoding. Integration
   coverage must exercise both repair modes on healthy temporary buckets,
   verify object preservation and subsequent consistent index headers, and
-  reject missing bucket names locally.
+  reject missing bucket names and reconciliation without repair locally.
 - Metadata sections: registration and wire names are in
   `src/rgw/driver/rados/rgw_service.cc` and the handlers listed in
   `rgw/metadata.go`.

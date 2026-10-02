@@ -106,7 +106,6 @@ Omitting `Access` returns a validation error before sending a request.
 - [x] `GetBucketACL` — `GET /admin/bucket?policy`
 - [x] `GetObjectACL` — `GET /admin/bucket?policy&object=...`
 - [x] `CheckBucketIndex` — `GET /admin/bucket?index`
-- [x] `RepairBucketIndex` — `GET /admin/bucket?index&fix=true`
 - [x] `LinkBucketToUser` — `PUT /admin/bucket` with `uid`
 - [x] `LinkBucketToAccount` — `PUT /admin/bucket` with `account-id`
 - [x] `SetBucketQuota` — `PUT /admin/bucket?quota`
@@ -132,11 +131,13 @@ cheaper name-only listing.
 owner and ACL grants. The object getter requires both `Bucket` and `Object`.
 S3 bucket policy documents use a separate S3 API.
 
-`CheckBucketIndex` reports index inconsistencies without repair.
-`RepairBucketIndex` removes invalid multipart index entries and rebuilds index
-statistics. Set its `CheckObjects` to true to also reconcile object entries.
-Both require `buckets=write` and return a `BucketIndexCheck` report; `Objects`
-is present only when object reconciliation is requested.
+`CheckBucketIndex` reports index inconsistencies. Set `Repair: true` to also
+remove invalid multipart index entries and rebuild index statistics. Set
+`ReconcileObjects: true` with `Repair: true` to additionally reconcile object
+entries; reconciliation without repair is rejected before sending a request.
+Both options default to false. The method requires `buckets=write` and returns
+a `BucketIndexCheck` report; `Objects` is present only when reconciliation is
+requested. The report's headers describe the index before statistics rebuilding.
 
 `SetBucketSync` requires `Enabled: new(true)` to enable synchronization or
 `Enabled: new(false)` to disable it. Omitting `Enabled` returns a validation
