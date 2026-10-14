@@ -109,7 +109,7 @@ func (client *Client) GetMetadataLogInfo(ctx context.Context) (MetadataLogInfo, 
 }
 
 type GetMetadataLogShardInfoRequest struct {
-	ShardID int64
+	ShardID int32
 	Period  string
 }
 
@@ -124,7 +124,7 @@ func (client *Client) GetMetadataLogShardInfo(ctx context.Context, input GetMeta
 		return MetadataLogShardInfo{}, errors.New("rgw: metadata log shard ID must not be negative")
 	}
 	query := url.Values{"type": {"metadata"}, "info": {""}}
-	setInt64(query, "id", &input.ShardID)
+	setInt32(query, "id", &input.ShardID)
 	setString(query, "period", input.Period)
 	var result MetadataLogShardInfo
 	err := client.getLogClosingConnection(ctx, query, &result)
@@ -132,10 +132,10 @@ func (client *Client) GetMetadataLogShardInfo(ctx context.Context, input GetMeta
 }
 
 type ListMetadataLogEntriesRequest struct {
-	ShardID    int64
+	ShardID    int32
 	Period     string
 	Marker     string
-	MaxEntries *int64
+	MaxEntries *int32
 }
 
 // ListMetadataLogEntries lists entries from one metadata-log shard.
@@ -146,11 +146,14 @@ func (client *Client) ListMetadataLogEntries(ctx context.Context, input ListMeta
 	if input.ShardID < 0 {
 		return MetadataLogEntryList{}, errors.New("rgw: metadata log shard ID must not be negative")
 	}
+	if input.MaxEntries != nil && *input.MaxEntries < 1 {
+		return MetadataLogEntryList{}, errors.New("rgw: max entries must be positive")
+	}
 	query := url.Values{"type": {"metadata"}}
-	setInt64(query, "id", &input.ShardID)
+	setInt32(query, "id", &input.ShardID)
 	setString(query, "period", input.Period)
 	setString(query, "marker", input.Marker)
-	setInt64(query, "max-entries", input.MaxEntries)
+	setInt32(query, "max-entries", input.MaxEntries)
 	var result MetadataLogEntryList
 	err := client.getLog(ctx, query, &result)
 	return result, err

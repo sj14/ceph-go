@@ -20,11 +20,11 @@ func createRGWAccountFixture(t *testing.T, client *rgw.Client, ctx context.Conte
 	return createRGWAccountFixtureFromRequest(t, client, ctx, rgw.CreateAccountRequest{
 		Name:          uniqueResourceName(t, "ceph-go-admin-integration-account"),
 		Email:         uniqueResourceName(t, "account") + "@example.invalid",
-		MaxUsers:      new(int64(11)),
-		MaxRoles:      new(int64(12)),
-		MaxGroups:     new(int64(13)),
-		MaxAccessKeys: new(int64(14)),
-		MaxBuckets:    new(int64(15)),
+		MaxUsers:      new(int32(11)),
+		MaxRoles:      new(int32(12)),
+		MaxGroups:     new(int32(13)),
+		MaxAccessKeys: new(int32(14)),
+		MaxBuckets:    new(int32(15)),
 	})
 }
 
@@ -154,9 +154,9 @@ func TestRGWUpdateAccount(t *testing.T) {
 	fixture, original := createRGWAccountFixture(t, client, ctx)
 	otherFixture, other := createRGWAccountFixture(t, client, ctx)
 	for _, input := range []rgw.UpdateAccountRequest{
-		{Name: other.Name, MaxBuckets: new(int64(0))},
-		{Email: other.Email, MaxBuckets: new(int64(0))},
-		{ID: " ", Name: other.Name, Email: other.Email, MaxBuckets: new(int64(0))},
+		{Name: other.Name, MaxBuckets: new(int32(0))},
+		{Email: other.Email, MaxBuckets: new(int32(0))},
+		{ID: " ", Name: other.Name, Email: other.Email, MaxBuckets: new(int32(0))},
 	} {
 		_, err := client.UpdateAccount(ctx, input)
 		var apiErr *rgw.APIError
@@ -175,7 +175,7 @@ func TestRGWUpdateAccount(t *testing.T) {
 	email := name + "@example.invalid"
 	account, err := client.UpdateAccount(ctx, rgw.UpdateAccountRequest{
 		ID: fixture.id, Name: name, Email: email,
-		MaxBuckets: new(int64(0)),
+		MaxBuckets: new(int32(0)),
 	})
 	if err != nil {
 		t.Fatal(err)

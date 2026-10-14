@@ -48,9 +48,9 @@ func TestAccountEndpoints(t *testing.T) {
 			call: func(ctx context.Context, client *Client) error {
 				_, err := client.CreateAccount(ctx, CreateAccountRequest{
 					ID: "RGW00000000000000001", Tenant: "tenant", Name: "name",
-					Email: "account@example.invalid", MaxUsers: new(int64(1)),
-					MaxRoles: new(int64(2)), MaxGroups: new(int64(3)),
-					MaxAccessKeys: new(int64(4)), MaxBuckets: new(int64(5)),
+					Email: "account@example.invalid", MaxUsers: new(int32(1)),
+					MaxRoles: new(int32(2)), MaxGroups: new(int32(3)),
+					MaxAccessKeys: new(int32(4)), MaxBuckets: new(int32(5)),
 				})
 				return err
 			},
@@ -66,7 +66,7 @@ func TestAccountEndpoints(t *testing.T) {
 			call: func(ctx context.Context, client *Client) error {
 				_, err := client.UpdateAccount(ctx, UpdateAccountRequest{
 					ID: "RGW00000000000000001", Email: "updated@example.invalid",
-					MaxBuckets: new(int64(0)),
+					MaxBuckets: new(int32(0)),
 				})
 				return err
 			},

@@ -12,7 +12,7 @@ func TestRGWListUsers(t *testing.T) {
 	client := rgwIntegrationClient(t)
 	ctx := integrationContext(t)
 	fixture, _ := createRGWUserFixture(t, client, ctx)
-	users, err := client.ListUsers(ctx, rgw.ListUsersRequest{MaxEntries: new(int64(1000))})
+	users, err := client.ListUsers(ctx, rgw.ListUsersRequest{MaxEntries: new(uint32(1000))})
 	if err != nil {
 		t.Fatal(err)
 	}

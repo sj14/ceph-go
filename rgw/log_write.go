@@ -17,11 +17,11 @@ import (
 //   - src/common/ceph_json.h (map/set request encoding)
 
 type LockMetadataLogRequest struct {
-	ShardID       int64
+	ShardID       int32
 	Period        string
 	LockerID      string
 	ZoneID        string
-	LengthSeconds int64
+	LengthSeconds int32
 }
 
 // LockMetadataLog obtains or renews an exclusive metadata-log shard lock
@@ -32,16 +32,16 @@ func (client *Client) LockMetadataLog(ctx context.Context, input LockMetadataLog
 	if err != nil {
 		return err
 	}
-	if input.LengthSeconds <= 0 || input.LengthSeconds > 1<<32-1 {
-		return errors.New("rgw: metadata log lock length must be between 1 and 4294967295 seconds")
+	if input.LengthSeconds <= 0 {
+		return errors.New("rgw: metadata log lock length must be positive")
 	}
 	query.Set("lock", "")
-	setInt64(query, "length", &input.LengthSeconds)
+	setInt32(query, "length", &input.LengthSeconds)
 	return client.logAction(ctx, http.MethodPost, query, nil)
 }
 
 type UnlockMetadataLogRequest struct {
-	ShardID  int64
+	ShardID  int32
 	Period   string
 	LockerID string
 	ZoneID   string
@@ -58,7 +58,7 @@ func (client *Client) UnlockMetadataLog(ctx context.Context, input UnlockMetadat
 	return client.logAction(ctx, http.MethodPost, query, nil)
 }
 
-func metadataLogLockQuery(shard int64, period, locker, zone string) (url.Values, error) {
+func metadataLogLockQuery(shard int32, period, locker, zone string) (url.Values, error) {
 	query, err := logShardQuery("metadata", shard)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func metadataLogLockQuery(shard int64, period, locker, zone string) (url.Values,
 }
 
 type NotifyMetadataLogRequest struct {
-	UpdatedShards []int64
+	UpdatedShards []int32
 }
 
 // NotifyMetadataLog wakes metadata-sync workers through
@@ -82,18 +82,18 @@ type NotifyMetadataLogRequest struct {
 func (client *Client) NotifyMetadataLog(ctx context.Context, input NotifyMetadataLogRequest) error {
 	shards := input.UpdatedShards
 	if shards == nil {
-		shards = []int64{}
+		shards = []int32{}
 	}
 	for _, shard := range shards {
-		if shard < 0 || shard > 1<<31-1 {
-			return errors.New("rgw: notification shard IDs must be between 0 and 2147483647")
+		if shard < 0 {
+			return errors.New("rgw: notification shard IDs must not be negative")
 		}
 	}
 	return client.logAction(ctx, http.MethodPost, url.Values{"type": {"metadata"}, "notify": {""}}, shards)
 }
 
 type TrimMetadataLogRequest struct {
-	ShardID int64
+	ShardID int32
 	Period  string
 	Marker  string
 }
@@ -140,7 +140,7 @@ func (client *Client) TrimBucketIndexLog(ctx context.Context, input TrimBucketIn
 // DataLogShardNotification uses the original notify API's key-only entries.
 // Ceph treats these entries as generation zero.
 type DataLogShardNotification struct {
-	ShardID int64    `json:"key"`
+	ShardID int32    `json:"key"`
 	Keys    []string `json:"val"`
 }
 
@@ -157,8 +157,8 @@ func (client *Client) NotifyDataLog(ctx context.Context, input NotifyDataLogRequ
 		shards = []DataLogShardNotification{}
 	}
 	for _, shard := range shards {
-		if shard.ShardID < 0 || shard.ShardID > 1<<31-1 {
-			return errors.New("rgw: notification shard IDs must be between 0 and 2147483647")
+		if shard.ShardID < 0 {
+			return errors.New("rgw: notification shard IDs must not be negative")
 		}
 	}
 	query := url.Values{"type": {"data"}, "notify": {""}}
@@ -174,7 +174,7 @@ type DataLogNotificationEntry struct {
 }
 
 type DataLogShardNotificationV2 struct {
-	ShardID int64                      `json:"key"`
+	ShardID int32                      `json:"key"`
 	Entries []DataLogNotificationEntry `json:"val"`
 }
 
@@ -192,8 +192,8 @@ func (client *Client) NotifyDataLogV2(ctx context.Context, input NotifyDataLogV2
 		shards = []DataLogShardNotificationV2{}
 	}
 	for _, shard := range shards {
-		if shard.ShardID < 0 || shard.ShardID > 1<<31-1 {
-			return errors.New("rgw: notification shard IDs must be between 0 and 2147483647")
+		if shard.ShardID < 0 {
+			return errors.New("rgw: notification shard IDs must not be negative")
 		}
 	}
 	query := url.Values{"type": {"data"}, "notify2": {""}}
@@ -202,7 +202,7 @@ func (client *Client) NotifyDataLogV2(ctx context.Context, input NotifyDataLogV2
 }
 
 type TrimDataLogRequest struct {
-	ShardID int64
+	ShardID int32
 	Marker  string
 }
 
@@ -216,16 +216,16 @@ func (client *Client) TrimDataLog(ctx context.Context, input TrimDataLogRequest)
 	return client.logAction(ctx, http.MethodDelete, query, nil)
 }
 
-func logShardQuery(logType string, shard int64) (url.Values, error) {
-	if shard < 0 || shard > 1<<31-1 {
-		return nil, errors.New("rgw: log shard ID must be between 0 and 2147483647")
+func logShardQuery(logType string, shard int32) (url.Values, error) {
+	if shard < 0 {
+		return nil, errors.New("rgw: log shard ID must not be negative")
 	}
 	query := url.Values{"type": {logType}}
-	setInt64(query, "id", &shard)
+	setInt32(query, "id", &shard)
 	return query, nil
 }
 
-func logTrimQuery(logType string, shard int64, marker string) (url.Values, error) {
+func logTrimQuery(logType string, shard int32, marker string) (url.Values, error) {
 	query, err := logShardQuery(logType, shard)
 	if err != nil {
 		return nil, err

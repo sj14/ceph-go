@@ -28,7 +28,7 @@ func TestRGWListMetadataLogEntries(t *testing.T) {
 	t.Parallel()
 
 	_, err := rgwIntegrationClient(t).ListMetadataLogEntries(
-		integrationContext(t), rgw.ListMetadataLogEntriesRequest{ShardID: 0, MaxEntries: new(int64(1))},
+		integrationContext(t), rgw.ListMetadataLogEntriesRequest{ShardID: 0, MaxEntries: new(int32(1))},
 	)
 	requireRGWAPIStatus(t, err, http.StatusBadRequest)
 }

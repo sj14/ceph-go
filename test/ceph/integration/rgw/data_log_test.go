@@ -38,7 +38,7 @@ func TestRGWListDataLogEntries(t *testing.T) {
 
 	entries, err := rgwIntegrationClient(t).ListDataLogEntries(
 		integrationContext(t), rgw.ListDataLogEntriesRequest{
-			ShardID: 0, MaxEntries: new(int64(10)),
+			ShardID: 0, MaxEntries: new(int32(10)),
 		},
 	)
 	if err != nil {
@@ -57,7 +57,7 @@ func TestRGWListDataLogEntries(t *testing.T) {
 func TestRGWListDataLogChanges(t *testing.T) {
 	t.Parallel()
 	changes, err := rgwIntegrationClient(t).ListDataLogChanges(
-		integrationContext(t), rgw.ListDataLogEntriesRequest{ShardID: 0, MaxEntries: new(int64(10))},
+		integrationContext(t), rgw.ListDataLogEntriesRequest{ShardID: 0, MaxEntries: new(int32(10))},
 	)
 	if err != nil {
 		t.Fatal(err)

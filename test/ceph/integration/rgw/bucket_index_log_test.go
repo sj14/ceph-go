@@ -39,7 +39,7 @@ func TestRGWListBucketIndexLogEntries(t *testing.T) {
 
 	client, bucket, instance := rgwBucketLogFixture(t)
 	entries, err := client.ListBucketIndexLogEntries(integrationContext(t), rgw.ListBucketIndexLogEntriesRequest{
-		Bucket: bucket, BucketInstance: instance, MaxEntries: new(int64(10)),
+		Bucket: bucket, BucketInstance: instance, MaxEntries: new(int32(10)),
 	})
 	if err != nil {
 		t.Fatal(err)

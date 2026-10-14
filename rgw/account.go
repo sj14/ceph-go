@@ -71,11 +71,11 @@ type CreateAccountRequest struct {
 	Tenant        string
 	Name          string
 	Email         string
-	MaxUsers      *int64
-	MaxRoles      *int64
-	MaxGroups     *int64
-	MaxAccessKeys *int64
-	MaxBuckets    *int64
+	MaxUsers      *int32
+	MaxRoles      *int32
+	MaxGroups     *int32
+	MaxAccessKeys *int32
+	MaxBuckets    *int32
 }
 
 // CreateAccount creates an account directly through POST /admin/account.
@@ -96,11 +96,11 @@ type UpdateAccountRequest struct {
 	ID            string
 	Name          string
 	Email         string
-	MaxUsers      *int64
-	MaxRoles      *int64
-	MaxGroups     *int64
-	MaxAccessKeys *int64
-	MaxBuckets    *int64
+	MaxUsers      *int32
+	MaxRoles      *int32
+	MaxGroups     *int32
+	MaxAccessKeys *int32
+	MaxBuckets    *int32
 }
 
 // UpdateAccount modifies an account directly through PUT /admin/account.
@@ -219,12 +219,12 @@ func accountIdentityQuery(id, tenant, name string) url.Values {
 	return query
 }
 
-func setAccountLimits(query url.Values, maxUsers, maxRoles, maxGroups, maxAccessKeys, maxBuckets *int64) {
-	setInt64(query, "max-users", maxUsers)
-	setInt64(query, "max-roles", maxRoles)
-	setInt64(query, "max-groups", maxGroups)
-	setInt64(query, "max-access-keys", maxAccessKeys)
-	setInt64(query, "max-buckets", maxBuckets)
+func setAccountLimits(query url.Values, maxUsers, maxRoles, maxGroups, maxAccessKeys, maxBuckets *int32) {
+	setInt32(query, "max-users", maxUsers)
+	setInt32(query, "max-roles", maxRoles)
+	setInt32(query, "max-groups", maxGroups)
+	setInt32(query, "max-access-keys", maxAccessKeys)
+	setInt32(query, "max-buckets", maxBuckets)
 }
 
 func (client *Client) accountRequest(ctx context.Context, method string, query url.Values) (Account, error) {

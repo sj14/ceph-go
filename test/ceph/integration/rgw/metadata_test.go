@@ -27,13 +27,20 @@ func TestRGWListMetadataKeys(t *testing.T) {
 	}
 
 	users, err := client.ListMetadataKeys(ctx, rgw.ListMetadataKeysRequest{
-		Section: rgw.MetadataSectionUser, MaxEntries: new(int64(100)),
+		Section: rgw.MetadataSectionUser, MaxEntries: new(int32(100)),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if users.Count == 0 || users.Truncated || !containsString(users.Keys, "ceph-go-admin") {
 		t.Fatalf("user metadata keys = %#v", users)
+	}
+
+	// Ceph accepts these values but returns a non-advancing page or loops.
+	for _, maxEntries := range []int32{0, -1} {
+		if _, err := client.ListMetadataKeys(ctx, rgw.ListMetadataKeysRequest{MaxEntries: &maxEntries}); err == nil {
+			t.Fatalf("ListMetadataKeys with MaxEntries %d succeeded", maxEntries)
+		}
 	}
 }
 

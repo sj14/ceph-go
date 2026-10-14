@@ -185,9 +185,13 @@ type UserList struct {
 	Marker    string   `json:"marker,omitempty"`
 }
 
+// ListUsersRequest pages through user IDs. MaxEntries, when set, must be
+// positive; Ceph v20.2.4's RGWOp_User_List parses it with
+// RESTArgs::get_uint32, and RGWUserAdminOp_User::list in
+// src/rgw/driver/rados/rgw_user.cc caps it at 1000 and lists nothing for 0.
 type ListUsersRequest struct {
 	Marker     string
-	MaxEntries *int64
+	MaxEntries *uint32
 }
 
 // ListUsers lists RGW user IDs directly through GET /admin/user?list.
@@ -195,9 +199,12 @@ func (client *Client) ListUsers(ctx context.Context, input ListUsersRequest) (Us
 	if ctx == nil {
 		return UserList{}, errors.New("rgw: context must not be nil")
 	}
+	if input.MaxEntries != nil && *input.MaxEntries == 0 {
+		return UserList{}, errors.New("rgw: max entries must be positive")
+	}
 	query := url.Values{"list": {""}}
 	setString(query, "marker", input.Marker)
-	setInt64(query, "max-entries", input.MaxEntries)
+	setUint32(query, "max-entries", input.MaxEntries)
 	body, request, err := client.userRawRequest(ctx, http.MethodGet, query)
 	if err != nil {
 		return UserList{}, err
@@ -275,7 +282,7 @@ type CreateUserRequest struct {
 	Tenant              string
 	GenerateKey         *bool
 	Suspended           *bool
-	MaxBuckets          *int64
+	MaxBuckets          *int32
 	System              *bool
 	AccountRoot         *bool
 	Exclusive           *bool
@@ -310,7 +317,7 @@ func (client *Client) CreateUser(ctx context.Context, input CreateUserRequest) (
 	setString(query, "tenant", input.Tenant)
 	setBool(query, "generate-key", input.GenerateKey)
 	setBool(query, "suspended", input.Suspended)
-	setInt64(query, "max-buckets", input.MaxBuckets)
+	setInt32(query, "max-buckets", input.MaxBuckets)
 	setBool(query, "system", input.System)
 	setBool(query, "account-root", input.AccountRoot)
 	setBool(query, "exclusive", input.Exclusive)
@@ -337,7 +344,7 @@ type UpdateUserRequest struct {
 	KeyType             *UserKeyType
 	GenerateKey         *bool
 	Suspended           *bool
-	MaxBuckets          *int64
+	MaxBuckets          *int32
 	System              *bool
 	AccountRoot         *bool
 	OperationMask       *string
@@ -366,7 +373,7 @@ func (client *Client) UpdateUser(ctx context.Context, input UpdateUserRequest) (
 	}
 	setBool(query, "generate-key", input.GenerateKey)
 	setBool(query, "suspended", input.Suspended)
-	setInt64(query, "max-buckets", input.MaxBuckets)
+	setInt32(query, "max-buckets", input.MaxBuckets)
 	setBool(query, "system", input.System)
 	setBool(query, "account-root", input.AccountRoot)
 	setStringPointer(query, "op-mask", input.OperationMask)

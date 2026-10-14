@@ -62,10 +62,17 @@ type Metadata struct {
 	Data             map[string]any `json:"data"`
 }
 
+// ListMetadataKeysRequest selects a metadata section or, when Section is
+// empty, the list of sections. MaxEntries, when set, must be positive; it is
+// an int32 because Ceph v20.2.4's RGWOp_Metadata_List::execute in
+// src/rgw/rgw_rest_metadata.cc parses max-entries with strict_strtol, which
+// rejects values outside int, then casts it to unsigned and passes it to the
+// handler's int max. 0 returns an empty truncated page with an unchanged
+// marker, and negative values can loop indefinitely on the server.
 type ListMetadataKeysRequest struct {
 	Section    MetadataSection
 	Marker     string
-	MaxEntries *int64
+	MaxEntries *int32
 }
 
 // ListMetadataKeys lists metadata sections or keys within a section through
@@ -74,9 +81,12 @@ func (client *Client) ListMetadataKeys(ctx context.Context, input ListMetadataKe
 	if ctx == nil {
 		return MetadataKeyList{}, errors.New("rgw: context must not be nil")
 	}
+	if input.MaxEntries != nil && *input.MaxEntries < 1 {
+		return MetadataKeyList{}, errors.New("rgw: max entries must be positive")
+	}
 	query := url.Values{}
 	setString(query, "marker", input.Marker)
-	setInt64(query, "max-entries", input.MaxEntries)
+	setInt32(query, "max-entries", input.MaxEntries)
 	body, request, err := client.metadataRequest(ctx, input.Section, query)
 	if err != nil {
 		return MetadataKeyList{}, err

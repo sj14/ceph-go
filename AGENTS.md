@@ -44,6 +44,12 @@ separate clients for Ceph Dashboard APIs and the direct RGW Admin Ops API.
   force genuinely open-ended fields into enums. When Ceph uses different wire
   representations or values for requests and responses, use separate types
   and constants for the two representations.
+- Type request parameters with the Go type that most closely matches what
+  Ceph accepts, following the value through its parser and downstream use.
+  For example, use `uint32` for `RESTArgs::get_uint32` and `int32` when a
+  value is ultimately passed as an `int`. Let the type enforce the range
+  instead of range-checking a wider type; validate only remaining invalid
+  values, such as zero, locally.
 - Reuse one Go model when multiple fields or endpoints originate from the same
   Ceph source type and wire representation. Name shared models for the Ceph
   domain concept rather than for one endpoint, and do not duplicate identical
@@ -239,6 +245,13 @@ All source paths below refer to that tag.
 - Metadata sections: registration and wire names are in
   `src/rgw/driver/rados/rgw_service.cc` and the handlers listed in
   `rgw/metadata.go`.
+- Metadata key listing: `RGWOp_Metadata_List::execute` in
+  `src/rgw/rgw_rest_metadata.cc` parses `max-entries` with `strict_strtol`,
+  casts it to unsigned, and passes the remainder to `list_keys_next(int max)`.
+  For the section list in `src/rgw/rgw_metadata.cc`, 0 returns an empty
+  truncated page with an unchanged marker, and negative values never advance
+  while the server loop continues. Keep MaxEntries an `int32`, reject nonpositive
+  values locally, and never send such values to Ceph, including in tests.
 - Account quotas: the REST parser uses `int32` limits while stored quota
   models use `int64`; preserve the distinct request representation.
 - Account updates: `src/rgw/rgw_rest_account.cc` parses the update parameters,
@@ -286,6 +299,16 @@ All source paths below refer to that tag.
   requests entries only, and `ListUsageSummaries` requests summaries only.
   Reuse the filters in `GetUsageRequest` and return typed slices for individual
   collections rather than a partially populated `Usage`.
+
+- Numeric request types: `RESTArgs::get_int32/get_uint32/get_int64` in
+  `src/rgw/rgw_rest.cc` select account limits and user `max-buckets` (`int32`),
+  user and bucket listing `max-entries` (`uint32`), and quota and rate limits
+  (`int64`). `src/rgw/driver/rados/rgw_rest_log.cc` parses log shard IDs,
+  `max-entries`, and lock `length` with `strict_strtol` from
+  `src/common/strtol.cc`, which rejects values outside `int` before casting
+  to unsigned; keep them `int32` and reject negative values (and nonpositive
+  counts and lengths) locally. Log generations use `strict_strtoll` and stay
+  nonnegative `int64`. Notify bodies decode shard IDs into `int`.
 
 ### Metadata and log mutations
 

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -83,7 +82,7 @@ type BucketExplicitPlacement struct {
 // an account member, Ceph lists the account's buckets. Marker and MaxEntries
 // page through an owner's buckets and require UID, because Ceph ignores them
 // for the global listing. Nil MaxEntries lists all remaining buckets; otherwise
-// it must be between 1 and math.MaxUint32. Marker is the previous page's Marker.
+// it must be positive. Marker is the previous page's Marker.
 //
 // Ceph v20.2.4's src/rgw/driver/rados/rgw_rest_bucket.cc
 // (RGWOp_Bucket_Info::execute) parses uid, marker, and max-entries as uint32,
@@ -95,7 +94,7 @@ type BucketExplicitPlacement struct {
 type ListBucketsRequest struct {
 	UID        string
 	Marker     string
-	MaxEntries *int64
+	MaxEntries *uint32
 }
 
 // BucketNameList contains bucket names. Marker is set when Truncated.
@@ -152,13 +151,13 @@ func (client *Client) listBuckets(ctx context.Context, input ListBucketsRequest,
 	if strings.TrimSpace(input.UID) == "" && (input.Marker != "" || input.MaxEntries != nil) {
 		return errors.New("rgw: bucket list marker and max entries require a user UID")
 	}
-	if input.MaxEntries != nil && (*input.MaxEntries < 1 || *input.MaxEntries > math.MaxUint32) {
-		return errors.New("rgw: max entries must be between 1 and 4294967295")
+	if input.MaxEntries != nil && *input.MaxEntries == 0 {
+		return errors.New("rgw: max entries must be positive")
 	}
 	query := url.Values{}
 	setString(query, "uid", input.UID)
 	setString(query, "marker", input.Marker)
-	setInt64(query, "max-entries", input.MaxEntries)
+	setUint32(query, "max-entries", input.MaxEntries)
 	setBool(query, "stats", &stats)
 	body, request, err := client.bucketRequest(ctx, http.MethodGet, query)
 	if err != nil {

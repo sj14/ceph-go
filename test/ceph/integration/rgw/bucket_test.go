@@ -278,7 +278,7 @@ func TestRGWListBucketsPaginated(t *testing.T) {
 	marker := ""
 	for range 3 {
 		page, err := client.ListBucketNames(ctx, rgw.ListBucketsRequest{
-			UID: userID, Marker: marker, MaxEntries: new(int64(1)),
+			UID: userID, Marker: marker, MaxEntries: new(uint32(1)),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -299,7 +299,7 @@ func TestRGWListBucketsPaginated(t *testing.T) {
 		t.Fatalf("paged names = %v, want both account buckets", names)
 	}
 
-	page, err := client.ListBuckets(ctx, rgw.ListBucketsRequest{UID: userID, MaxEntries: new(int64(2))})
+	page, err := client.ListBuckets(ctx, rgw.ListBucketsRequest{UID: userID, MaxEntries: new(uint32(2))})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,10 +308,9 @@ func TestRGWListBucketsPaginated(t *testing.T) {
 	}
 
 	for _, input := range []rgw.ListBucketsRequest{
-		{MaxEntries: new(int64(1))},
+		{MaxEntries: new(uint32(1))},
 		{Marker: first.name},
-		{UID: userID, MaxEntries: new(int64(0))},
-		{UID: userID, MaxEntries: new(int64(1 << 32))},
+		{UID: userID, MaxEntries: new(uint32(0))},
 	} {
 		if _, err := client.ListBucketNames(ctx, input); err == nil {
 			t.Fatalf("ListBucketNames(%#v) succeeded", input)

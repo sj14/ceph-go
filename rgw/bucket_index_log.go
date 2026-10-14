@@ -113,7 +113,7 @@ type ListBucketIndexLogEntriesRequest struct {
 	Bucket         string
 	BucketInstance string
 	Marker         string
-	MaxEntries     *int64
+	MaxEntries     *int32
 	Generation     *int64
 }
 
@@ -126,10 +126,16 @@ func (client *Client) ListBucketIndexLogEntries(ctx context.Context, input ListB
 	if strings.TrimSpace(input.BucketInstance) == "" {
 		return BucketIndexLogEntryList{}, errors.New("rgw: bucket instance must not be empty")
 	}
+	if input.MaxEntries != nil && *input.MaxEntries < 1 {
+		return BucketIndexLogEntryList{}, errors.New("rgw: max entries must be positive")
+	}
+	if input.Generation != nil && *input.Generation < 0 {
+		return BucketIndexLogEntryList{}, errors.New("rgw: bucket-index log generation must not be negative")
+	}
 	query := bucketIndexLogQuery(input.Tenant, input.Bucket, input.BucketInstance)
 	query.Set("format-ver", "2")
 	setString(query, "marker", input.Marker)
-	setInt64(query, "max-entries", input.MaxEntries)
+	setInt32(query, "max-entries", input.MaxEntries)
 	setInt64(query, "generation", input.Generation)
 	var result BucketIndexLogEntryList
 	err := client.getLog(ctx, query, &result)

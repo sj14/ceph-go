@@ -96,7 +96,7 @@ func (client *Client) GetDataLogInfo(ctx context.Context) (DataLogInfo, error) {
 }
 
 type GetDataLogShardInfoRequest struct {
-	ShardID int64
+	ShardID int32
 }
 
 // GetDataLogShardInfo retrieves one data-log shard's information.
@@ -108,7 +108,7 @@ func (client *Client) GetDataLogShardInfo(ctx context.Context, input GetDataLogS
 		return DataLogShardInfo{}, errors.New("rgw: data log shard ID must not be negative")
 	}
 	query := url.Values{"type": {"data"}, "info": {""}}
-	setInt64(query, "id", &input.ShardID)
+	setInt32(query, "id", &input.ShardID)
 	var result DataLogShardInfo
 	err := client.getLog(ctx, query, &result)
 	return result, err
@@ -117,9 +117,9 @@ func (client *Client) GetDataLogShardInfo(ctx context.Context, input GetDataLogS
 // ListDataLogEntriesRequest filters both detailed entry and change listings.
 // Pass the previous page's Marker unchanged to continue a truncated listing.
 type ListDataLogEntriesRequest struct {
-	ShardID    int64
+	ShardID    int32
 	Marker     string
-	MaxEntries *int64
+	MaxEntries *int32
 }
 
 // ListDataLogEntries lists changes with their log IDs and log timestamps from
@@ -148,10 +148,13 @@ func (client *Client) listDataLog(ctx context.Context, input ListDataLogEntriesR
 	if input.ShardID < 0 {
 		return errors.New("rgw: data log shard ID must not be negative")
 	}
+	if input.MaxEntries != nil && *input.MaxEntries < 1 {
+		return errors.New("rgw: max entries must be positive")
+	}
 	query := url.Values{"type": {"data"}}
-	setInt64(query, "id", &input.ShardID)
+	setInt32(query, "id", &input.ShardID)
 	setString(query, "marker", input.Marker)
-	setInt64(query, "max-entries", input.MaxEntries)
+	setInt32(query, "max-entries", input.MaxEntries)
 	setBool(query, "extra-info", &extraInfo)
 	return client.getLog(ctx, query, result)
 }

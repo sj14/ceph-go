@@ -86,7 +86,7 @@ func TestRGWNotifyMetadataLog(t *testing.T) {
 
 	client := rgwIntegrationClient(t)
 	if err := client.NotifyMetadataLog(integrationContext(t), rgw.NotifyMetadataLogRequest{
-		UpdatedShards: []int64{0, 1},
+		UpdatedShards: []int32{0, 1},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -197,6 +197,6 @@ func TestRGWTrimDataLog(t *testing.T) {
 	}
 	// Data-log shards are global. Exercise the backend's shard boundary check
 	// without removing logs belonging to other tests or live replication.
-	err = client.TrimDataLog(ctx, rgw.TrimDataLogRequest{ShardID: info.NumShards, Marker: "z"})
+	err = client.TrimDataLog(ctx, rgw.TrimDataLogRequest{ShardID: int32(info.NumShards), Marker: "z"})
 	requireRGWAPIStatus(t, err, http.StatusBadRequest)
 }

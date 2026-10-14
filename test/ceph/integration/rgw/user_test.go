@@ -27,7 +27,7 @@ func createRGWUserFixture(t *testing.T, client *rgw.Client, ctx context.Context)
 		UID:         fixture.uid,
 		DisplayName: "Admin API Integration User",
 		GenerateKey: new(false),
-		MaxBuckets:  new(int64(37)),
+		MaxBuckets:  new(int32(37)),
 		Suspended:   new(false),
 	})
 	if err != nil {
@@ -151,7 +151,7 @@ func TestRGWUpdateUser(t *testing.T) {
 		UID:         fixture.uid,
 		DisplayName: new("Updated Admin API User"),
 		Email:       new("admin-api@example.invalid"),
-		MaxBuckets:  new(int64(0)),
+		MaxBuckets:  new(int32(0)),
 		Suspended:   new(true),
 	})
 	if err != nil {
