@@ -216,3 +216,41 @@ func TestNewClientValidation(t *testing.T) {
 		})
 	}
 }
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
+}
+
+func TestClientEmptyUserAgentPreservesHTTPClientValue(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if got := request.Header.Get("User-Agent"); got != "http-client-agent" {
+			t.Errorf("User-Agent = %q, want http-client-agent", got)
+		}
+		_, _ = writer.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+
+	httpClient := &http.Client{Transport: roundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		if got := request.Header.Get("User-Agent"); got != "" {
+			t.Errorf("client set User-Agent %q despite empty WithUserAgent", got)
+		}
+		request = request.Clone(request.Context())
+		request.Header.Set("User-Agent", "http-client-agent")
+		return http.DefaultTransport.RoundTrip(request)
+	})}
+	client, err := NewClient(server.URL, "access-key", "secret-key", WithHTTPClient(httpClient), WithUserAgent(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := client.newRequest(context.Background(), http.MethodGet, "user", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.do(request); err != nil {
+		t.Fatal(err)
+	}
+}

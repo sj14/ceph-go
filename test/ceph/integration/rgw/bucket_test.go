@@ -107,6 +107,25 @@ func TestRGWGetBucket(t *testing.T) {
 	}
 }
 
+func TestRGWGetBucketUsage(t *testing.T) {
+	t.Parallel()
+
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	fixture := createRGWBucketFixture(t, client, ctx)
+	content := []byte("usage integration test")
+	requireS3Success(t, ctx, http.MethodPut, fixture.name+"/object", content)
+	bucket, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	usage, ok := bucket.Usage["rgw.main"]
+	if !ok || usage.NumObjects != 1 || usage.Size != int64(len(content)) ||
+		usage.SizeActual < usage.Size || usage.SizeKBActual < 1 {
+		t.Fatalf("Admin Ops bucket usage = %#v", bucket.Usage)
+	}
+}
+
 func TestRGWLinkBucketToUser(t *testing.T) {
 	t.Parallel()
 
@@ -126,6 +145,36 @@ func TestRGWLinkBucketToUser(t *testing.T) {
 	}
 	if bucket.Owner != userFixture.uid {
 		t.Fatalf("linked Admin Ops bucket owner = %q, want %q", bucket.Owner, userFixture.uid)
+	}
+}
+
+func TestRGWLinkBucketToUserNewName(t *testing.T) {
+	t.Parallel()
+
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	fixture := createRGWBucketFixture(t, client, ctx)
+	before, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldName, newName := fixture.name, uniqueResourceName(t, "ceph-go-admin-integration-renamed")
+	if err := client.LinkBucketToUser(ctx, rgw.LinkBucketToUserRequest{
+		Name: oldName, UID: "ceph-go-admin", NewName: newName,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	fixture.name = newName
+	renamed, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: newName})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if renamed.Name != newName || renamed.ID != before.ID || renamed.Owner != "ceph-go-admin" {
+		t.Fatalf("renamed Admin Ops bucket = %#v", renamed)
+	}
+	_, err = client.GetBucket(ctx, rgw.GetBucketRequest{Name: oldName})
+	if !errors.Is(err, rgw.ErrNoSuchBucket) {
+		t.Fatalf("GetBucket for old name error = %v, want NoSuchBucket", err)
 	}
 }
 
@@ -255,6 +304,33 @@ func TestRGWDeleteBucket(t *testing.T) {
 	_, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
 	if !errors.Is(err, rgw.ErrNoSuchBucket) {
 		t.Fatalf("GetBucket after Admin Ops delete error = %v, want NoSuchBucket", err)
+	}
+}
+
+func TestRGWDeleteBucketPurgeObjects(t *testing.T) {
+	t.Parallel()
+
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	fixture := createRGWBucketFixture(t, client, ctx)
+	requireS3Success(t, ctx, http.MethodPut, fixture.name+"/object", []byte("content"))
+
+	err := client.DeleteBucket(ctx, rgw.DeleteBucketRequest{Name: fixture.name, PurgeObjects: new(false)})
+	if !errors.Is(err, rgw.ErrBucketNotEmpty) {
+		t.Fatalf("DeleteBucket without purge error = %v, want BucketNotEmpty", err)
+	}
+	requireRGWAPIStatus(t, err, http.StatusConflict)
+	if _, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name}); err != nil {
+		t.Fatalf("rejected delete removed bucket: %v", err)
+	}
+
+	if err := client.DeleteBucket(ctx, rgw.DeleteBucketRequest{Name: fixture.name, PurgeObjects: new(true)}); err != nil {
+		t.Fatal(err)
+	}
+	fixture.deleted = true
+	_, err = client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
+	if !errors.Is(err, rgw.ErrNoSuchBucket) {
+		t.Fatalf("GetBucket after purging delete error = %v, want NoSuchBucket", err)
 	}
 }
 

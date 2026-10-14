@@ -50,11 +50,46 @@ func TestRGWCreateUser(t *testing.T) {
 	t.Parallel()
 
 	client := rgwIntegrationClient(t)
-	fixture, user := createRGWUserFixture(t, client, integrationContext(t))
+	ctx := integrationContext(t)
+	fixture, user := createRGWUserFixture(t, client, ctx)
 	if user.ID != fixture.uid || user.FullUserID != fixture.uid ||
 		user.DisplayName != "Admin API Integration User" || user.MaxBuckets != 37 ||
 		user.Type != rgw.UserTypeRGW || user.CreateDate.IsZero() || len(user.Keys) != 0 {
 		t.Fatalf("created Admin Ops user = %#v", user)
+	}
+
+	_, err := client.CreateUser(ctx, rgw.CreateUserRequest{UID: fixture.uid, DisplayName: "Duplicate"})
+	if !errors.Is(err, rgw.ErrUserExists) {
+		t.Fatalf("duplicate CreateUser error = %v, want UserAlreadyExists", err)
+	}
+	requireRGWAPIStatus(t, err, http.StatusConflict)
+}
+
+func TestRGWCreateUserOperationMask(t *testing.T) {
+	t.Parallel()
+
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	uid := uniqueResourceName(t, "ceph-go-admin-integration-user")
+	request := rgw.CreateUserRequest{
+		UID: uid, DisplayName: "Admin API Integration User", OperationMask: "read, write",
+	}
+	user, err := client.CreateUser(ctx, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := client.DeleteUser(cleanupCtx, rgw.DeleteUserRequest{UID: uid}); err != nil {
+			t.Errorf("cleanup Admin Ops user %q: %v", uid, err)
+		}
+	})
+	if user.OperationMask != "read, write" {
+		t.Fatalf("created user op mask = %q, want %q", user.OperationMask, "read, write")
+	}
+	if stored, err := client.GetUser(ctx, rgw.GetUserRequest{UID: uid}); err != nil || stored.OperationMask != "read, write" {
+		t.Fatalf("stored user op mask = %q, %v", stored.OperationMask, err)
 	}
 }
 

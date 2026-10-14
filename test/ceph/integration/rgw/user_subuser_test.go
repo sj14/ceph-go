@@ -2,6 +2,7 @@ package integration
 
 import (
 	"errors"
+	"net/http"
 	"reflect"
 	"testing"
 
@@ -26,6 +27,57 @@ func TestRGWCreateSubuser(t *testing.T) {
 	if len(subusers) != 1 || subusers[0].ID != fixture.uid+":swift" ||
 		subusers[0].Permissions != rgw.SubuserPermissionReadWrite {
 		t.Fatalf("created Admin Ops subusers = %#v", subusers)
+	}
+}
+
+func TestRGWCreateSubuserS3Key(t *testing.T) {
+	t.Parallel()
+
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	owner, _ := createRGWUserFixture(t, client, ctx)
+	other, _ := createRGWUserFixture(t, client, ctx)
+	request := rgw.CreateSubuserRequest{
+		UID:       owner.uid,
+		Subuser:   "s3",
+		Access:    rgw.SubuserAccessReadWrite,
+		KeyType:   rgw.UserKeyTypeS3,
+		AccessKey: uniqueResourceName(t, "RGWGOADMINSUBKEY"),
+		SecretKey: "ceph-go-admin-subuser-secret",
+	}
+	subusers, err := client.CreateSubuser(ctx, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(subusers) != 1 || subusers[0].ID != owner.uid+":s3" ||
+		subusers[0].Permissions != rgw.SubuserPermissionReadWrite {
+		t.Fatalf("created Admin Ops subusers = %#v", subusers)
+	}
+	user, err := client.GetUser(ctx, rgw.GetUserRequest{UID: owner.uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := rgw.AccessKey{User: owner.uid + ":s3", AccessKey: request.AccessKey, SecretKey: request.SecretKey, Active: true}
+	if len(user.Keys) != 1 || user.Keys[0] != want || len(user.SwiftKeys) != 0 {
+		t.Fatalf("subuser credentials = %#v, Swift %#v", user.Keys, user.SwiftKeys)
+	}
+
+	before, err := client.GetUser(ctx, rgw.GetUserRequest{UID: other.uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.UID = other.uid
+	_, err = client.CreateSubuser(ctx, request)
+	if !errors.Is(err, rgw.ErrKeyExists) {
+		t.Fatalf("duplicate subuser access key error = %v, want KeyExists", err)
+	}
+	requireRGWAPIStatus(t, err, http.StatusConflict)
+	after, err := client.GetUser(ctx, rgw.GetUserRequest{UID: other.uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, after) {
+		t.Fatalf("rejected duplicate key changed user: %#v", after)
 	}
 }
 
@@ -123,6 +175,57 @@ func TestRGWDeleteSubuser(t *testing.T) {
 	}
 }
 
+// Ceph v20.2.4's RGWSubUserPool::execute_remove always removes the subuser's
+// keys; DeleteSubuserRequest therefore has no purge-keys setting.
+func TestRGWDeleteSubuserKeys(t *testing.T) {
+	t.Parallel()
+
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	fixture, _ := createRGWUserFixture(t, client, ctx)
+	if _, err := client.CreateS3Key(ctx, rgw.CreateS3KeyRequest{UID: fixture.uid}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.CreateSubuser(ctx, rgw.CreateSubuserRequest{
+		UID: fixture.uid, Subuser: "s3", Access: rgw.SubuserAccessRead,
+		KeyType: rgw.UserKeyTypeS3, GenerateAccessKey: new(true), GenerateSecret: new(true),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.CreateSwiftKey(ctx, rgw.CreateSwiftKeyRequest{UID: fixture.uid, Subuser: "s3"}); err != nil {
+		t.Fatal(err)
+	}
+	user, err := client.GetUser(ctx, rgw.GetUserRequest{UID: fixture.uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var userKeys []rgw.AccessKey
+	for _, key := range user.Keys {
+		if key.User == fixture.uid {
+			userKeys = append(userKeys, key)
+		}
+	}
+	if len(user.Keys) != 2 || len(userKeys) != 1 || len(user.SwiftKeys) != 1 {
+		t.Fatalf("credentials before delete = %#v, Swift %#v", user.Keys, user.SwiftKeys)
+	}
+	if err := client.DeleteSubuser(ctx, rgw.DeleteSubuserRequest{UID: fixture.uid, Subuser: "s3"}); err != nil {
+		t.Fatal(err)
+	}
+	user, err = client.GetUser(ctx, rgw.GetUserRequest{UID: fixture.uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(user.Subusers) != 0 || len(user.SwiftKeys) != 0 || !reflect.DeepEqual(user.Keys, userKeys) {
+		t.Fatalf("user after subuser delete = %#v", user)
+	}
+
+	err = client.DeleteSubuser(ctx, rgw.DeleteSubuserRequest{UID: fixture.uid, Subuser: "s3"})
+	if !errors.Is(err, rgw.ErrNoSuchSubUser) {
+		t.Fatalf("deleting missing subuser error = %v, want NoSuchSubUser", err)
+	}
+	requireRGWAPIStatus(t, err, http.StatusNotFound)
+}
+
 func TestRGWRejectQualifiedSubusers(t *testing.T) {
 	t.Parallel()
 	client := rgwIntegrationClient(t)
@@ -171,7 +274,7 @@ func TestRGWRejectQualifiedSubusers(t *testing.T) {
 		}},
 		{"DeleteSubuser", func(prefix string) error {
 			return client.DeleteSubuser(ctx, rgw.DeleteSubuserRequest{
-				UID: uid, Subuser: prefix + ":reader", PurgeKeys: new(true),
+				UID: uid, Subuser: prefix + ":reader",
 			})
 		}},
 		{"CreateS3Key", func(prefix string) error {

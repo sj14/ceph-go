@@ -102,12 +102,18 @@ func (client *Client) UpdateSubuser(ctx context.Context, input UpdateSubuserRequ
 
 // DeleteSubuserRequest requires UID and an unqualified Subuser name.
 type DeleteSubuserRequest struct {
-	UID       string
-	Subuser   string
-	PurgeKeys *bool
+	UID     string
+	Subuser string
+	// PurgeKeys (purge-keys) is omitted: RGWOp_Subuser_Remove in Ceph v20.2.4's
+	// src/rgw/driver/rados/rgw_rest_user.cc parses it, but
+	// RGWSubUserPool::execute_remove in rgw_user.cc never reads it and always
+	// removes the subuser's keys. Restore it if a later release honors false.
+	// PurgeKeys *bool
 }
 
-// DeleteSubuser deletes a subuser through DELETE /admin/user?subuser.
+// DeleteSubuser deletes a subuser through DELETE /admin/user?subuser,
+// including all of the subuser's S3 and Swift keys. The user's own keys are
+// preserved.
 func (client *Client) DeleteSubuser(ctx context.Context, input DeleteSubuserRequest) error {
 	if ctx == nil {
 		return errors.New("rgw: context must not be nil")
@@ -119,7 +125,6 @@ func (client *Client) DeleteSubuser(ctx context.Context, input DeleteSubuserRequ
 		"subuser": {input.Subuser},
 		"uid":     {input.UID},
 	}
-	setBool(query, "purge-keys", input.PurgeKeys)
 	_, _, err := client.userRawRequest(ctx, http.MethodDelete, query)
 	return err
 }
