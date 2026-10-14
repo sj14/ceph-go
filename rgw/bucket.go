@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -78,55 +79,99 @@ type BucketExplicitPlacement struct {
 	IndexPool     string `json:"index_pool"`
 }
 
-// ListBucketsRequest filters both bucket-name and detailed bucket listings by
-// user UID. An empty UID lists all buckets. For a user belonging to an account,
-// Ceph lists that account's buckets.
+// ListBucketsRequest selects all buckets or, with UID, one user's buckets. For
+// an account member, Ceph lists the account's buckets. Marker and MaxEntries
+// page through an owner's buckets and require UID, because Ceph ignores them
+// for the global listing. Nil MaxEntries lists all remaining buckets; otherwise
+// it must be between 1 and math.MaxUint32. Marker is the previous page's Marker.
 //
 // Ceph v20.2.4's src/rgw/driver/rados/rgw_rest_bucket.cc
-// (RGWOp_Bucket_Info::execute) does not accept an account-id listing filter;
-// rgw_bucket.cc (RGWBucketAdminOp::info) resolves account membership from UID.
+// (RGWOp_Bucket_Info::execute) parses uid, marker, and max-entries as uint32,
+// but no account-id listing filter. rgw_bucket.cc (RGWBucketAdminOp::info)
+// resolves account membership from UID; only list_owner_bucket_info honors
+// marker and max-entries, and it returns a result object with truncated,
+// count, and marker only when max-entries is positive. Otherwise Ceph returns
+// the complete listing as a bare array, which the list methods normalize.
 type ListBucketsRequest struct {
-	UID string
+	UID        string
+	Marker     string
+	MaxEntries *int64
+}
+
+// BucketNameList contains bucket names. Marker is set when Truncated.
+type BucketNameList struct {
+	Names     []string `json:"buckets"`
+	Truncated bool     `json:"truncated"`
+	// Count is the number of names in this response, not the owner's total.
+	Count  int64  `json:"count"`
+	Marker string `json:"marker,omitempty"`
+}
+
+// BucketList contains detailed buckets. Marker is set when Truncated.
+type BucketList struct {
+	Buckets   []Bucket `json:"buckets"`
+	Truncated bool     `json:"truncated"`
+	// Count is the number of buckets in this response, not the owner's total.
+	Count  int64  `json:"count"`
+	Marker string `json:"marker,omitempty"`
 }
 
 // ListBuckets lists detailed buckets through GET /admin/bucket?stats=true.
 // Use ListBucketNames when only names are needed to avoid fetching statistics.
-func (client *Client) ListBuckets(ctx context.Context, input ListBucketsRequest) ([]Bucket, error) {
-	body, request, err := client.listBuckets(ctx, input, true)
-	if err != nil {
-		return nil, err
+func (client *Client) ListBuckets(ctx context.Context, input ListBucketsRequest) (BucketList, error) {
+	var result BucketList
+	if err := client.listBuckets(ctx, input, true, &result.Buckets, &result); err != nil {
+		return BucketList{}, err
 	}
-	var result []Bucket
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
+	if input.MaxEntries == nil {
+		result.Count = int64(len(result.Buckets))
 	}
 	return result, nil
 }
 
 // ListBucketNames lists bucket names through GET /admin/bucket?stats=false.
-// Both listing methods accept the same owner filters in ListBucketsRequest.
-// Ceph v20.2.4's src/rgw/driver/rados/rgw_rest_bucket.cc selects stats; its
-// rgw_bucket.cc emits strings without stats and bucket_stats objects with stats.
-func (client *Client) ListBucketNames(ctx context.Context, input ListBucketsRequest) ([]string, error) {
-	body, request, err := client.listBuckets(ctx, input, false)
-	if err != nil {
-		return nil, err
+// Ceph v20.2.4's rgw_bucket.cc emits strings without stats and bucket_stats
+// objects with stats.
+func (client *Client) ListBucketNames(ctx context.Context, input ListBucketsRequest) (BucketNameList, error) {
+	var result BucketNameList
+	if err := client.listBuckets(ctx, input, false, &result.Names, &result); err != nil {
+		return BucketNameList{}, err
 	}
-	var result []string
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
+	if input.MaxEntries == nil {
+		result.Count = int64(len(result.Names))
 	}
 	return result, nil
 }
 
-func (client *Client) listBuckets(ctx context.Context, input ListBucketsRequest, stats bool) ([]byte, *http.Request, error) {
+// listBuckets decodes the bare array into items, or the paginated object into
+// list when MaxEntries is set.
+func (client *Client) listBuckets(ctx context.Context, input ListBucketsRequest, stats bool, items, list any) error {
 	if ctx == nil {
-		return nil, nil, errors.New("rgw: context must not be nil")
+		return errors.New("rgw: context must not be nil")
+	}
+	if strings.TrimSpace(input.UID) == "" && (input.Marker != "" || input.MaxEntries != nil) {
+		return errors.New("rgw: bucket list marker and max entries require a user UID")
+	}
+	if input.MaxEntries != nil && (*input.MaxEntries < 1 || *input.MaxEntries > math.MaxUint32) {
+		return errors.New("rgw: max entries must be between 1 and 4294967295")
 	}
 	query := url.Values{}
 	setString(query, "uid", input.UID)
+	setString(query, "marker", input.Marker)
+	setInt64(query, "max-entries", input.MaxEntries)
 	setBool(query, "stats", &stats)
-	return client.bucketRequest(ctx, http.MethodGet, query)
+	body, request, err := client.bucketRequest(ctx, http.MethodGet, query)
+	if err != nil {
+		return err
+	}
+	target := items
+	if input.MaxEntries != nil {
+		target = list
+	}
+	if err := json.Unmarshal(body, target); err != nil {
+		return fmt.Errorf("rgw: decode %s %s response: %w", request.Method, request.URL.Path, err)
+	}
+	return nil
 }
 
 type GetBucketRequest struct {

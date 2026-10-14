@@ -43,13 +43,14 @@ func TestRGWListBuckets(t *testing.T) {
 	client := rgwIntegrationClient(t)
 	ctx := integrationContext(t)
 	fixture := createRGWBucketFixture(t, client, ctx)
-	buckets, err := client.ListBuckets(ctx, rgw.ListBucketsRequest{
-		UID: "ceph-go-admin",
-	})
+	list, err := client.ListBuckets(ctx, rgw.ListBucketsRequest{UID: "ceph-go-admin"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, bucket := range buckets {
+	if list.Truncated || list.Count != int64(len(list.Buckets)) {
+		t.Fatalf("unpaginated list = %#v", list)
+	}
+	for _, bucket := range list.Buckets {
 		if bucket.Name == fixture.name {
 			if bucket.Owner != "ceph-go-admin" || bucket.ID == "" || bucket.IndexType != rgw.BucketIndexNormal {
 				t.Fatalf("listed Admin Ops bucket = %#v", bucket)
@@ -57,7 +58,7 @@ func TestRGWListBuckets(t *testing.T) {
 			return
 		}
 	}
-	t.Fatalf("created bucket %q is missing from Admin Ops ListBuckets: %#v", fixture.name, buckets)
+	t.Fatalf("created bucket %q is missing from Admin Ops ListBuckets: %#v", fixture.name, list.Buckets)
 }
 
 func TestRGWListBucketNames(t *testing.T) {
@@ -67,14 +68,27 @@ func TestRGWListBucketNames(t *testing.T) {
 	fixture := createRGWBucketFixture(t, client, ctx)
 	// Check both global and owner-filtered name-only response paths.
 	for _, input := range []rgw.ListBucketsRequest{{}, {UID: "ceph-go-admin"}} {
-		names, err := client.ListBucketNames(ctx, input)
+		list, err := client.ListBucketNames(ctx, input)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !containsString(names, fixture.name) {
-			t.Errorf("created bucket %q missing from name listing for %#v: %#v", fixture.name, input, names)
+		if list.Truncated || list.Count != int64(len(list.Names)) {
+			t.Errorf("unpaginated list for %#v = %#v", input, list)
+		}
+		if !containsString(list.Names, fixture.name) {
+			t.Errorf("created bucket %q missing from name listing for %#v: %#v", fixture.name, input, list.Names)
 		}
 	}
+}
+
+// userBucketNames lists all bucket names of an owner.
+func userBucketNames(t *testing.T, client *rgw.Client, ctx context.Context, uid string) []string {
+	t.Helper()
+	list, err := client.ListBucketNames(ctx, rgw.ListBucketsRequest{UID: uid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return list.Names
 }
 
 func TestRGWGetBucket(t *testing.T) {
@@ -127,10 +141,7 @@ func TestRGWUnlinkBucketFromUser(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	buckets, err := client.ListBucketNames(ctx, rgw.ListBucketsRequest{UID: "ceph-go-admin"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	buckets := userBucketNames(t, client, ctx, "ceph-go-admin")
 	for _, bucket := range buckets {
 		if bucket == fixture.name {
 			t.Fatalf("unlinked bucket %q remains in the owner's bucket list", fixture.name)
@@ -148,10 +159,7 @@ func TestRGWUnlinkBucketFromUser(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	buckets, err = client.ListBucketNames(ctx, rgw.ListBucketsRequest{UID: "ceph-go-admin"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	buckets = userBucketNames(t, client, ctx, "ceph-go-admin")
 	if !containsString(buckets, fixture.name) {
 		t.Fatal("relinked bucket is missing from the user's bucket list")
 	}
@@ -186,10 +194,7 @@ func TestRGWLinkBucketToAccount(t *testing.T) {
 	if bucket.Owner != accountID {
 		t.Fatalf("linked bucket owner = %q, want %q", bucket.Owner, accountID)
 	}
-	buckets, err := client.ListBucketNames(ctx, rgw.ListBucketsRequest{UID: userID})
-	if err != nil {
-		t.Fatal(err)
-	}
+	buckets := userBucketNames(t, client, ctx, userID)
 	if !containsString(buckets, fixture.name) {
 		t.Fatal("linked bucket is missing from the account's bucket list")
 	}
@@ -214,10 +219,7 @@ func TestRGWUnlinkBucketFromAccount(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	buckets, err := client.ListBucketNames(ctx, rgw.ListBucketsRequest{UID: userID})
-	if err != nil {
-		t.Fatal(err)
-	}
+	buckets := userBucketNames(t, client, ctx, userID)
 	if containsString(buckets, fixture.name) {
 		t.Fatal("unlinked bucket remains in the account's bucket list")
 	}
@@ -233,10 +235,7 @@ func TestRGWUnlinkBucketFromAccount(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	buckets, err = client.ListBucketNames(ctx, rgw.ListBucketsRequest{UID: userID})
-	if err != nil {
-		t.Fatal(err)
-	}
+	buckets = userBucketNames(t, client, ctx, userID)
 	if !containsString(buckets, fixture.name) {
 		t.Fatal("relinked bucket is missing from the account's bucket list")
 	}
@@ -256,5 +255,66 @@ func TestRGWDeleteBucket(t *testing.T) {
 	_, err := client.GetBucket(ctx, rgw.GetBucketRequest{Name: fixture.name})
 	if !errors.Is(err, rgw.ErrNoSuchBucket) {
 		t.Fatalf("GetBucket after Admin Ops delete error = %v, want NoSuchBucket", err)
+	}
+}
+
+func TestRGWListBucketsPaginated(t *testing.T) {
+	t.Parallel()
+	client := rgwIntegrationClient(t)
+	ctx := integrationContext(t)
+	accountID, userID, first := rgwAccountBucketFixture(t, client, ctx)
+	second := createRGWBucketFixture(t, client, ctx)
+	want := map[string]bool{}
+	for _, fixture := range []*rgwBucketFixture{first, second} {
+		if err := client.LinkBucketToAccount(ctx, rgw.LinkBucketToAccountRequest{
+			Name: fixture.name, AccountID: accountID,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		want[fixture.name] = true
+	}
+
+	var names []string
+	marker := ""
+	for range 3 {
+		page, err := client.ListBucketNames(ctx, rgw.ListBucketsRequest{
+			UID: userID, Marker: marker, MaxEntries: new(int64(1)),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if page.Count != int64(len(page.Names)) || len(page.Names) > 1 {
+			t.Fatalf("page = %#v, want at most one name matching count", page)
+		}
+		names = append(names, page.Names...)
+		if !page.Truncated {
+			break
+		}
+		if page.Marker == "" {
+			t.Fatal("truncated page has no marker")
+		}
+		marker = page.Marker
+	}
+	if len(names) != 2 || !want[names[0]] || !want[names[1]] || names[0] == names[1] {
+		t.Fatalf("paged names = %v, want both account buckets", names)
+	}
+
+	page, err := client.ListBuckets(ctx, rgw.ListBucketsRequest{UID: userID, MaxEntries: new(int64(2))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Count != 2 || len(page.Buckets) != 2 || !want[page.Buckets[0].Name] || page.Buckets[0].Owner != accountID {
+		t.Fatalf("detailed page = %#v", page)
+	}
+
+	for _, input := range []rgw.ListBucketsRequest{
+		{MaxEntries: new(int64(1))},
+		{Marker: first.name},
+		{UID: userID, MaxEntries: new(int64(0))},
+		{UID: userID, MaxEntries: new(int64(1 << 32))},
+	} {
+		if _, err := client.ListBucketNames(ctx, input); err == nil {
+			t.Fatalf("ListBucketNames(%#v) succeeded", input)
+		}
 	}
 }

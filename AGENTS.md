@@ -190,6 +190,14 @@ All source paths below refer to that tag.
   `rgw_bucket.cc` in the same directory resolves account membership from UID.
   Do not reintroduce an ineffective `AccountID` filter or a public `Stats` flag;
   the name-only and detailed methods must retain fixed return types.
+  The same handler parses `marker` and uint32 `max-entries`; only owner
+  listings (`list_owner_bucket_info`) honor them, wrapping buckets in an object
+  with `truncated`, `count` (entries in this page), and `marker` when
+  max-entries is positive; 0 means omitted and returns a bare array. The list
+  methods return fixed list types, normalizing complete bare arrays to
+  untruncated lists with their length as count. Reject Marker or MaxEntries
+  without UID and nonpositive MaxEntries locally; never send them to the global
+  listing, which would silently return everything.
 - Bucket ownership: that REST source parses both `uid` and `account-id` for
   links and unlinks. `RGWBucketAdminOp::link/unlink` in `rgw_bucket.cc` selects
   the account first, while `RGWBucket::init` still uses UID for bucket lookup.

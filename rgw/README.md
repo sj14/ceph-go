@@ -100,8 +100,8 @@ Omitting `Access` returns a validation error before sending a request.
 
 ### Buckets
 
-- [x] `ListBucketNames` — `GET /admin/bucket?stats=false`, returns `[]string`
-- [x] `ListBuckets` — `GET /admin/bucket?stats=true`, returns `[]Bucket`
+- [x] `ListBucketNames` — `GET /admin/bucket?stats=false`, returns `BucketNameList`
+- [x] `ListBuckets` — `GET /admin/bucket?stats=true`, returns `BucketList`
 - [x] `GetBucket` — `GET /admin/bucket`
 - [x] `GetBucketACL` — `GET /admin/bucket?policy`
 - [x] `GetObjectACL` — `GET /admin/bucket?policy&object=...`
@@ -123,6 +123,10 @@ the bucket from the selected owner's list while preserving its owner and objects
 
 Both listing methods use `ListBucketsRequest.UID` to filter by user; an empty
 UID lists all buckets. For an account member, Ceph lists that account's buckets.
+Set `MaxEntries` to page through a user's buckets and pass the returned `Marker`
+while `Truncated` is true; `Count` is the number of entries in the response.
+Ceph does not paginate the global listing, so `Marker` and `MaxEntries` require
+`UID`. Without `MaxEntries`, all remaining buckets are returned.
 
 `ListBuckets` fetches details and statistics; use `ListBucketNames` for the
 cheaper name-only listing.
