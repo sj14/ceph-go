@@ -27,7 +27,8 @@ The credentials need suitable Admin Ops capabilities, such as `users=read` for
 bucket operations. The Admin Ops resource defaults to `/admin` and can be
 changed with `rgw.WithAdminPath`. A preconfigured `http.Client` can be supplied
 with `WithHTTPClient`; otherwise the client uses a 30-second total request
-timeout.
+timeout. Response bodies are unlimited by default; `WithMaxResponseBody` sets a
+byte limit and fails requests whose responses exceed it.
 
 API failures return `*rgw.APIError`. Use `errors.Is(err, rgw.ErrKeyExists)`
 (or another `ErrorCode` constant) to match Ceph's exact wire code. Constants

@@ -26,7 +26,6 @@ const (
 	defaultHTTPTimeout = 30 * time.Second
 	serviceName        = "s3"
 	unsignedPayload    = "UNSIGNED-PAYLOAD"
-	maxResponseBody    = 4 << 20
 )
 
 // Client calls the RGW Admin Ops API directly using AWS Signature Version 4.
@@ -39,7 +38,9 @@ type Client struct {
 	adminPath   string
 	region      string
 	userAgent   string
-	now         func() time.Time
+	// maxResponseBody limits read response bodies in bytes; 0 is unlimited.
+	maxResponseBody int64
+	now             func() time.Time
 }
 
 // Option configures a Client.
@@ -89,6 +90,18 @@ func WithRegion(region string) Option {
 func WithUserAgent(userAgent string) Option {
 	return func(client *Client) error {
 		client.userAgent = userAgent
+		return nil
+	}
+}
+
+// WithMaxResponseBody limits each response body to maxBytes and fails requests
+// whose responses are larger. By default, response bodies are unlimited.
+func WithMaxResponseBody(maxBytes int64) Option {
+	return func(client *Client) error {
+		if maxBytes <= 0 {
+			return errors.New("rgw: max response body must be positive")
+		}
+		client.maxResponseBody = maxBytes
 		return nil
 	}
 }
@@ -215,12 +228,16 @@ func (client *Client) doWithHeaders(request *http.Request) ([]byte, http.Header,
 	}
 	defer response.Body.Close()
 
-	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBody+1))
+	reader := io.Reader(response.Body)
+	if client.maxResponseBody > 0 {
+		reader = io.LimitReader(response.Body, client.maxResponseBody+1)
+	}
+	body, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, nil, fmt.Errorf("rgw: read %s %s response: %w", request.Method, request.URL.Path, err)
 	}
-	if len(body) > maxResponseBody {
-		return nil, nil, fmt.Errorf("rgw: %s %s response exceeds %d bytes", request.Method, request.URL.Path, maxResponseBody)
+	if client.maxResponseBody > 0 && int64(len(body)) > client.maxResponseBody {
+		return nil, nil, fmt.Errorf("rgw: %s %s response exceeds %d bytes", request.Method, request.URL.Path, client.maxResponseBody)
 	}
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		apiError := &APIError{

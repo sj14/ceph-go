@@ -148,24 +148,41 @@ func TestClientReturnsStructuredAPIError(t *testing.T) {
 	}
 }
 
-func TestClientRejectsOversizedResponse(t *testing.T) {
+func TestClientResponseBodyLimit(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
-		_, _ = writer.Write([]byte(strings.Repeat("x", maxResponseBody+1)))
+		_, _ = writer.Write([]byte(strings.Repeat("x", 5<<20)))
 	}))
 	defer server.Close()
 
-	client, err := NewClient(server.URL, "access-key", "secret-key")
-	if err != nil {
-		t.Fatal(err)
+	for _, test := range []struct {
+		options []Option
+		wantErr bool
+	}{
+		{nil, false},
+		{[]Option{WithMaxResponseBody(5 << 20)}, false},
+		{[]Option{WithMaxResponseBody(5<<20 - 1)}, true},
+	} {
+		client, err := NewClient(server.URL, "access-key", "secret-key", test.options...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		request, err := client.newRequest(context.Background(), http.MethodGet, "user", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := client.do(request)
+		if test.wantErr {
+			if err == nil || !strings.Contains(err.Error(), "response exceeds") {
+				t.Fatalf("error = %v, want response size error", err)
+			}
+		} else if err != nil || len(body) != 5<<20 {
+			t.Fatalf("body length = %d, error = %v", len(body), err)
+		}
 	}
-	request, err := client.newRequest(context.Background(), http.MethodGet, "user", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.do(request); err == nil || !strings.Contains(err.Error(), "response exceeds") {
-		t.Fatalf("error = %v, want response size error", err)
+	if _, err := NewClient(server.URL, "access-key", "secret-key", WithMaxResponseBody(0)); err == nil {
+		t.Fatal("WithMaxResponseBody(0) succeeded")
 	}
 }
 
